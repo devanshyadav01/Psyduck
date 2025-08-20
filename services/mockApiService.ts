@@ -1,535 +1,655 @@
-import { User, AuthResponse, RegisterData, LoginCredentials } from './authService';
-import { Project, Domain, UserProjectProgress, ProjectMilestone } from './projectService';
-import { ExecutionResult, CodeSubmission } from './codeService';
-import { XPTransaction, UserBadge, Badge, LeaderboardResponse, StreakData } from './gamificationService';
+import { User } from '../contexts/AuthContext';
 
-// Mock data storage
-let mockUsers: User[] = [];
-let mockProjects: Project[] = [];
-let mockUserProjects: UserProjectProgress[] = [];
-let mockBadges: Badge[] = [];
-let mockUserBadges: UserBadge[] = [];
-let mockXPHistory: XPTransaction[] = [];
-let currentUser: User | null = null;
-
-// Initialize mock data
-function initializeMockData() {
-  // Mock domains
-  const domains: Domain[] = [
-    {
-      id: '1',
-      name: 'MERN Stack',
-      slug: 'mern-stack',
-      description: 'Full-stack web development with MongoDB, Express, React, and Node.js',
-      colorHex: '#61DAFB',
-      sortOrder: 1,
-      isActive: true
-    },
-    {
-      id: '2',
-      name: 'Data Analytics',
-      slug: 'data-analytics',
-      description: 'Analyze and visualize data using Python, SQL, and modern tools',
-      colorHex: '#FF6B6B',
-      sortOrder: 2,
-      isActive: true
-    },
-    {
-      id: '3',
-      name: 'Mobile Development',
-      slug: 'mobile-dev',
-      description: 'Build mobile apps with React Native and Flutter',
-      colorHex: '#4ECDC4',
-      sortOrder: 3,
-      isActive: true
-    }
-  ];
-
-  // Mock projects
-  mockProjects = [
-    {
-      id: '1',
-      domainId: '1',
-      title: 'Todo App with React',
-      slug: 'todo-app-react',
-      description: 'Build a complete todo application with React and local storage',
-      detailedDescription: 'Learn React fundamentals by building a fully functional todo application. You\'ll implement state management, local storage, and modern React patterns.',
-      difficultyLevel: 'beginner',
-      estimatedHours: 8,
-      xpReward: 500,
-      techStack: ['React', 'JavaScript', 'HTML', 'CSS'],
-      learningObjectives: ['React state management', 'Local storage API', 'Event handling'],
-      prerequisites: ['Basic JavaScript knowledge', 'HTML/CSS fundamentals'],
-      projectType: 'guided',
-      isPremium: false,
-      isActive: true,
-      domain: domains[0],
-      milestones: [
-        {
-          id: '1',
-          projectId: '1',
-          title: 'Setup Project Structure',
-          description: 'Initialize React app and setup basic components',
-          instructions: 'Create a new React app and setup the basic folder structure',
-          sortOrder: 1,
-          xpReward: 100,
-          estimatedMinutes: 30,
-          isRequired: true,
-          validationCriteria: {}
-        }
-      ]
-    },
-    {
-      id: '2',
-      domainId: '1',
-      title: 'E-commerce Dashboard',
-      slug: 'ecommerce-dashboard',
-      description: 'Create an admin dashboard for managing an e-commerce store',
-      detailedDescription: 'Build a comprehensive admin dashboard with charts, user management, and order tracking.',
-      difficultyLevel: 'intermediate',
-      estimatedHours: 20,
-      xpReward: 1200,
-      techStack: ['React', 'Node.js', 'Express', 'MongoDB'],
-      learningObjectives: ['Dashboard design', 'Data visualization', 'API integration'],
-      prerequisites: ['React basics', 'JavaScript ES6+'],
-      projectType: 'guided',
-      isPremium: false,
-      isActive: true,
-      domain: domains[0],
-      milestones: []
-    },
-    {
-      id: '3',
-      domainId: '2',
-      title: 'Data Visualization Dashboard',
-      slug: 'data-viz-dashboard',
-      description: 'Build interactive charts and graphs using modern visualization libraries',
-      detailedDescription: 'Create stunning data visualizations with D3.js and React. Learn to tell stories with data.',
-      difficultyLevel: 'advanced',
-      estimatedHours: 15,
-      xpReward: 1000,
-      techStack: ['React', 'D3.js', 'Python', 'Pandas'],
-      learningObjectives: ['Data visualization', 'Statistical analysis', 'Interactive charts'],
-      prerequisites: ['React knowledge', 'Basic statistics'],
-      projectType: 'open_ended',
-      isPremium: true,
-      isActive: true,
-      domain: domains[1],
-      milestones: []
-    }
-  ];
-
-  // Mock badges
-  mockBadges = [
-    {
-      id: '1',
-      name: 'First Steps',
-      slug: 'first-steps',
-      description: 'Complete your first project',
-      iconUrl: '/badges/first-steps.svg',
-      category: 'completion',
-      criteria: { projectsCompleted: 1 },
-      xpValue: 100,
-      rarity: 'common',
-      isActive: true
-    },
-    {
-      id: '2',
-      name: 'Code Streak',
-      slug: 'code-streak',
-      description: 'Maintain a 7-day coding streak',
-      iconUrl: '/badges/streak.svg',
-      category: 'streak',
-      criteria: { streakDays: 7 },
-      xpValue: 200,
-      rarity: 'rare',
-      isActive: true
-    },
-    {
-      id: '3',
-      name: 'React Master',
-      slug: 'react-master',
-      description: 'Complete 5 React projects',
-      iconUrl: '/badges/react-master.svg',
-      category: 'skill',
-      criteria: { reactProjects: 5 },
-      xpValue: 500,
-      rarity: 'epic',
-      isActive: true
-    }
-  ];
-}
-
-// Helper function to generate realistic delays
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-// Helper function to generate UUIDs
-const generateId = () => Math.random().toString(36).substr(2, 9);
-
+// Mock API Service for development and testing
 class MockApiService {
-  constructor() {
-    initializeMockData();
+  private baseUrl = 'https://api.psyduck.dev/v1';
+  private authToken: string | null = null;
+  private currentUser: User | null = null;
+  
+  // Initialize with auth state
+  setAuth(token: string | null, user: User | null) {
+    this.authToken = token;
+    this.currentUser = user;
   }
 
-  // Auth endpoints
-  async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    await delay(800); // Simulate network delay
+  // Check if user is authenticated
+  private isAuthenticated(): boolean {
+    return this.authToken !== null && this.currentUser !== null;
+  }
 
-    const user = mockUsers.find(u => u.email === credentials.email);
-    if (!user) {
-      throw new Error('Invalid email or password');
+  // Simulate API delay
+  private async delay(ms: number = 100 + Math.random() * 300): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  // Generic request handler
+  private async request<T>(
+    endpoint: string, 
+    options: RequestInit = {}
+  ): Promise<{ data: T; success: boolean; message?: string }> {
+    await this.delay();
+
+    // Handle authentication for protected endpoints
+    const protectedEndpoints = [
+      '/user/profile',
+      '/user/progress',
+      '/user/enrolled-projects',
+      '/user/statistics',
+      '/projects/enrolled',
+      '/gamification/stats',
+      '/notifications'
+    ];
+
+    const isProtectedEndpoint = protectedEndpoints.some(pe => endpoint.includes(pe));
+    
+    if (isProtectedEndpoint && !this.isAuthenticated()) {
+      console.warn(`Mock API: Attempted to access protected endpoint ${endpoint} without authentication`);
+      return {
+        data: [] as T, // Return empty array instead of null for better UX
+        success: false,
+        message: 'Authentication required'
+      };
     }
 
-    // In a real app, you'd verify the password hash
-    currentUser = user;
-    
+    // Log API calls in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Mock API: ${options.method || 'GET'} ${endpoint}`);
+    }
+
     return {
-      user,
-      token: 'mock-jwt-token-' + Date.now(),
-      refreshToken: 'mock-refresh-token-' + Date.now()
+      data: null as T,
+      success: true,
+      message: 'Mock response'
     };
   }
 
-  async register(userData: RegisterData): Promise<AuthResponse> {
-    await delay(1000); // Simulate network delay
-
-    // Check if user already exists
-    if (mockUsers.find(u => u.email === userData.email)) {
-      throw new Error('User with this email already exists');
+  // Authentication endpoints
+  async login(email: string, password: string) {
+    await this.delay(800);
+    
+    // Demo credentials
+    if (email === 'demo@psyduck.dev' && password === 'demo123') {
+      const token = 'mock-jwt-token-demo-user';
+      const user: User = {
+        id: 'demo-user-123',
+        username: 'demo',
+        email: 'demo@psyduck.dev',
+        displayName: 'Demo User',
+        membership: 'premium',
+        xp: 2340,
+        level: 7,
+        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo',
+        joinedAt: new Date('2024-01-15'),
+        streak: 12,
+        badges: ['first-project', 'week-streak', 'code-reviewer', 'premium-member'],
+        projects: {
+          completed: 8,
+          inProgress: 2,
+          total: 10
+        }
+      };
+      
+      this.setAuth(token, user);
+      
+      return {
+        data: { token, user },
+        success: true,
+        message: 'Login successful'
+      };
     }
 
-    if (mockUsers.find(u => u.username === userData.username)) {
-      throw new Error('Username is already taken');
+    // Mock successful login for valid-looking credentials
+    if (email.includes('@') && password.length >= 6) {
+      const token = `mock-jwt-token-${Date.now()}`;
+      const user: User = {
+        id: `user-${Date.now()}`,
+        username: email.split('@')[0],
+        email,
+        displayName: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
+        membership: 'free',
+        xp: 0,
+        level: 1,
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+        joinedAt: new Date(),
+        streak: 0,
+        badges: ['new-member'],
+        projects: {
+          completed: 0,
+          inProgress: 0,
+          total: 0
+        }
+      };
+      
+      this.setAuth(token, user);
+      
+      return {
+        data: { token, user },
+        success: true,
+        message: 'Login successful'
+      };
     }
 
-    const newUser: User = {
-      id: generateId(),
-      email: userData.email,
-      username: userData.username,
-      firstName: userData.firstName,
-      lastName: userData.lastName,
-      totalXp: 0,
-      currentStreak: 0,
-      longestStreak: 0,
-      skillLevel: userData.skillLevel,
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      profile: {
-        yearsOfExperience: 0,
-        openToOpportunities: true,
-        profileCompletionPercentage: 60
+    return {
+      data: null,
+      success: false,
+      message: 'Invalid credentials'
+    };
+  }
+
+  async register(email: string, password: string, username: string) {
+    await this.delay(1000);
+    
+    const token = `mock-jwt-token-${Date.now()}`;
+    const user: User = {
+      id: `user-${Date.now()}`,
+      username,
+      email,
+      displayName: username.charAt(0).toUpperCase() + username.slice(1),
+      membership: 'free',
+      xp: 0,
+      level: 1,
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
+      joinedAt: new Date(),
+      streak: 0,
+      badges: ['new-member'],
+      projects: {
+        completed: 0,
+        inProgress: 0,
+        total: 0
       }
     };
-
-    mockUsers.push(newUser);
-    currentUser = newUser;
-
-    return {
-      user: newUser,
-      token: 'mock-jwt-token-' + Date.now(),
-      refreshToken: 'mock-refresh-token-' + Date.now()
-    };
-  }
-
-  async getCurrentUser(): Promise<User> {
-    await delay(300);
     
-    if (!currentUser) {
-      throw new Error('Not authenticated');
-    }
-
-    return currentUser;
-  }
-
-  async updateProfile(updates: Partial<User>): Promise<User> {
-    await delay(500);
-
-    if (!currentUser) {
-      throw new Error('Not authenticated');
-    }
-
-    currentUser = { ...currentUser, ...updates };
-    const userIndex = mockUsers.findIndex(u => u.id === currentUser!.id);
-    if (userIndex !== -1) {
-      mockUsers[userIndex] = currentUser;
-    }
-
-    return currentUser;
-  }
-
-  // Project endpoints
-  async getProjects(): Promise<Project[]> {
-    await delay(600);
-    return mockProjects;
-  }
-
-  async getProjectById(id: string): Promise<Project> {
-    await delay(400);
+    this.setAuth(token, user);
     
-    const project = mockProjects.find(p => p.id === id);
-    if (!project) {
-      throw new Error('Project not found');
-    }
-
-    return project;
-  }
-
-  async getUserProjects(): Promise<UserProjectProgress[]> {
-    await delay(500);
-
-    if (!currentUser) {
-      throw new Error('Not authenticated');
-    }
-
-    // Generate some mock user projects if none exist
-    if (mockUserProjects.length === 0) {
-      mockUserProjects = [
-        {
-          id: generateId(),
-          userId: currentUser.id,
-          projectId: '1',
-          status: 'in_progress',
-          progressPercentage: 65,
-          startedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-          totalTimeSpent: 420 // 7 hours in minutes
-        },
-        {
-          id: generateId(),
-          userId: currentUser.id,
-          projectId: '2',
-          status: 'completed',
-          progressPercentage: 100,
-          startedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-          completedAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-          totalTimeSpent: 1200, // 20 hours
-          rating: 5
-        }
-      ];
-    }
-
-    return mockUserProjects.filter(up => up.userId === currentUser!.id);
-  }
-
-  async enrollProject(projectId: string): Promise<{ userProject: UserProjectProgress; message: string }> {
-    await delay(700);
-
-    if (!currentUser) {
-      throw new Error('Not authenticated');
-    }
-
-    const project = mockProjects.find(p => p.id === projectId);
-    if (!project) {
-      throw new Error('Project not found');
-    }
-
-    // Check if already enrolled
-    if (mockUserProjects.find(up => up.userId === currentUser!.id && up.projectId === projectId)) {
-      throw new Error('Already enrolled in this project');
-    }
-
-    const userProject: UserProjectProgress = {
-      id: generateId(),
-      userId: currentUser.id,
-      projectId,
-      status: 'not_started',
-      progressPercentage: 0,
-      totalTimeSpent: 0
-    };
-
-    mockUserProjects.push(userProject);
-
     return {
-      userProject,
-      message: 'Successfully enrolled in project!'
+      data: { token, user },
+      success: true,
+      message: 'Registration successful'
     };
   }
 
-  // Code execution endpoints
-  async executeCode(submission: CodeSubmission): Promise<ExecutionResult> {
-    await delay(1500); // Simulate code execution time
+  async logout() {
+    await this.delay(200);
+    this.setAuth(null, null);
+    
+    return {
+      data: null,
+      success: true,
+      message: 'Logged out successfully'
+    };
+  }
 
-    const mockResults: ExecutionResult[] = [
-      {
-        id: generateId(),
-        success: true,
-        output: 'Hello, World!\n42\nProgram completed successfully.',
-        executionTime: 145,
-        memoryUsage: 2048,
-        status: 'completed'
-      },
-      {
-        id: generateId(),
+  // User profile endpoints
+  async getUserProfile() {
+    if (!this.isAuthenticated()) {
+      return {
+        data: null,
         success: false,
-        output: '',
-        executionTime: 89,
-        memoryUsage: 1024,
-        status: 'error',
-        errorMessage: 'SyntaxError: Unexpected token \'}\'',
+        message: 'Not authenticated'
+      };
+    }
+
+    return {
+      data: this.currentUser,
+      success: true
+    };
+  }
+
+  async updateUserProfile(updates: Partial<User>) {
+    if (!this.isAuthenticated()) {
+      return {
+        data: null,
+        success: false,
+        message: 'Not authenticated'
+      };
+    }
+
+    // Simulate profile update
+    this.currentUser = { ...this.currentUser!, ...updates };
+    
+    return {
+      data: this.currentUser,
+      success: true,
+      message: 'Profile updated successfully'
+    };
+  }
+
+  // Projects endpoints
+  async getEnrolledProjects() {
+    await this.delay();
+    
+    if (!this.isAuthenticated()) {
+      return {
+        data: [],
+        success: false,
+        message: 'Not authenticated'
+      };
+    }
+
+    // Mock enrolled projects data
+    const enrolledProjects = [
+      {
+        id: 'project-1',
+        title: 'Build a Todo App with React',
+        description: 'Learn React fundamentals by building a complete todo application with state management, local storage, and modern UI components.',
+        domain: 'Web Development',
+        difficulty: 'Beginner' as const,
+        xpReward: 150,
+        estimatedTime: '2-3 hours',
+        progress: 75,
+        status: 'in-progress',
+        enrolledAt: new Date('2024-08-15'),
+        lastAccessed: new Date('2024-08-19'),
+        technologies: ['React', 'JavaScript', 'HTML', 'CSS', 'Local Storage'],
+        prerequisites: ['Basic JavaScript knowledge'],
+        featured: false,
+        completionRate: 85,
+        rating: 4.5,
+        studentsCount: 1250
       },
       {
-        id: generateId(),
-        success: true,
-        output: '[1, 2, 3, 4, 5]\nSum: 15\nAverage: 3.0',
-        executionTime: 234,
-        memoryUsage: 3072,
-        status: 'completed',
-        testResults: [
-          { testCase: 1, passed: true, input: [1, 2, 3], expected: 6, actual: 6 },
-          { testCase: 2, passed: true, input: [4, 5], expected: 9, actual: 9 }
-        ]
+        id: 'project-2', 
+        title: 'REST API with Node.js',
+        description: 'Build a complete REST API with authentication, database integration, middleware, and proper error handling using Node.js and Express.',
+        domain: 'Web Development',
+        difficulty: 'Intermediate' as const,
+        xpReward: 250,
+        estimatedTime: '4-5 hours',
+        progress: 30,
+        status: 'in-progress',
+        enrolledAt: new Date('2024-08-10'),
+        lastAccessed: new Date('2024-08-18'),
+        technologies: ['Node.js', 'Express', 'MongoDB', 'JWT', 'Bcrypt'],
+        prerequisites: ['JavaScript fundamentals', 'Basic understanding of HTTP'],
+        featured: true,
+        completionRate: 78,
+        rating: 4.7,
+        studentsCount: 890
       }
     ];
 
-    // Return a random result for demo purposes
-    return mockResults[Math.floor(Math.random() * mockResults.length)];
+    return {
+      data: enrolledProjects,
+      success: true
+    };
+  }
+
+  async getAvailableProjects() {
+    await this.delay();
+    
+    // Generate comprehensive mock projects data
+    const baseProjects = [
+      {
+        id: 'project-3',
+        title: 'Machine Learning Image Classifier',
+        description: 'Build an image classification model using TensorFlow and Python. Learn data preprocessing, model training, and deployment.',
+        domain: 'AI/ML',
+        difficulty: 'Advanced' as const,
+        xpReward: 400,
+        estimatedTime: '6-8 hours',
+        technologies: ['Python', 'TensorFlow', 'Keras', 'NumPy', 'Matplotlib'],
+        prerequisites: ['Python basics', 'Mathematics knowledge', 'Understanding of ML concepts'],
+        featured: true,
+        completionRate: 72,
+        rating: 4.8,
+        studentsCount: 456
+      },
+      {
+        id: 'project-4',
+        title: 'Flutter Mobile App',
+        description: 'Create a cross-platform mobile app with Flutter. Includes navigation, state management, API integration, and native features.',
+        domain: 'Mobile Development',
+        difficulty: 'Intermediate' as const,
+        xpReward: 300,
+        estimatedTime: '5-6 hours',
+        technologies: ['Flutter', 'Dart', 'Firebase', 'HTTP', 'Provider'],
+        prerequisites: ['Programming basics', 'Object-oriented concepts'],
+        featured: false,
+        completionRate: 81,
+        rating: 4.6,
+        studentsCount: 723
+      },
+      {
+        id: 'project-5',
+        title: 'Data Visualization Dashboard',
+        description: 'Build an interactive data dashboard using Python and modern visualization libraries. Learn to create compelling data stories.',
+        domain: 'Data Science',
+        difficulty: 'Intermediate' as const,
+        xpReward: 275,
+        estimatedTime: '4-5 hours',
+        technologies: ['Python', 'Pandas', 'Plotly', 'Streamlit', 'NumPy'],
+        prerequisites: ['Python basics', 'Basic statistics'],
+        featured: false,
+        completionRate: 76,
+        rating: 4.4,
+        studentsCount: 634
+      },
+      {
+        id: 'project-6',
+        title: 'DevOps Pipeline with Docker',
+        description: 'Learn containerization and CI/CD by building a complete deployment pipeline with Docker, GitHub Actions, and cloud platforms.',
+        domain: 'DevOps',
+        difficulty: 'Advanced' as const,
+        xpReward: 350,
+        estimatedTime: '5-7 hours',
+        technologies: ['Docker', 'GitHub Actions', 'AWS', 'Linux', 'Bash'],
+        prerequisites: ['Command line basics', 'Understanding of web applications'],
+        featured: true,
+        completionRate: 68,
+        rating: 4.7,
+        studentsCount: 392
+      },
+      {
+        id: 'project-7',
+        title: 'UI/UX Design System',
+        description: 'Create a comprehensive design system with components, tokens, and guidelines. Learn modern design principles and tools.',
+        domain: 'UI/UX Design',
+        difficulty: 'Intermediate' as const,
+        xpReward: 200,
+        estimatedTime: '3-4 hours',
+        technologies: ['Figma', 'Design Tokens', 'Component Libraries', 'Prototyping'],
+        prerequisites: ['Basic design knowledge'],
+        featured: false,
+        completionRate: 89,
+        rating: 4.3,
+        studentsCount: 567
+      },
+      {
+        id: 'project-8',
+        title: 'E-commerce Website with Next.js',
+        description: 'Build a full-stack e-commerce platform with user authentication, payment processing, and admin dashboard.',
+        domain: 'Web Development',
+        difficulty: 'Advanced' as const,
+        xpReward: 450,
+        estimatedTime: '8-10 hours',
+        technologies: ['Next.js', 'React', 'Stripe', 'PostgreSQL', 'Prisma', 'TypeScript'],
+        prerequisites: ['React knowledge', 'Database basics'],
+        featured: true,
+        completionRate: 65,
+        rating: 4.9,
+        studentsCount: 289
+      },
+      {
+        id: 'project-9',
+        title: 'Python Web Scraping Bot',
+        description: 'Learn web scraping techniques and automation by building a bot that collects and analyzes web data.',
+        domain: 'Data Science',
+        difficulty: 'Beginner' as const,
+        xpReward: 175,
+        estimatedTime: '2-3 hours',
+        technologies: ['Python', 'BeautifulSoup', 'Requests', 'Pandas', 'Selenium'],
+        prerequisites: ['Python basics'],
+        featured: false,
+        completionRate: 82,
+        rating: 4.2,
+        studentsCount: 891
+      },
+      {
+        id: 'project-10',
+        title: 'React Native Chat App',
+        description: 'Build a real-time chat application with React Native, including user authentication, media sharing, and push notifications.',
+        domain: 'Mobile Development',
+        difficulty: 'Advanced' as const,
+        xpReward: 375,
+        estimatedTime: '6-7 hours',
+        technologies: ['React Native', 'Socket.io', 'Firebase', 'Redux', 'Expo'],
+        prerequisites: ['React knowledge', 'Mobile development basics'],
+        featured: false,
+        completionRate: 71,
+        rating: 4.6,
+        studentsCount: 445
+      },
+      {
+        id: 'project-11',
+        title: 'JavaScript Game Development',
+        description: 'Create an interactive browser game using vanilla JavaScript, canvas API, and modern game development patterns.',
+        domain: 'Web Development',
+        difficulty: 'Beginner' as const,
+        xpReward: 125,
+        estimatedTime: '2-3 hours',
+        technologies: ['JavaScript', 'HTML5 Canvas', 'CSS3', 'Web APIs'],
+        prerequisites: ['Basic JavaScript'],
+        featured: false,
+        completionRate: 87,
+        rating: 4.1,
+        studentsCount: 1156
+      },
+      {
+        id: 'project-12',
+        title: 'Kubernetes Microservices',
+        description: 'Deploy and manage microservices architecture using Kubernetes, including service discovery, load balancing, and monitoring.',
+        domain: 'DevOps',
+        difficulty: 'Advanced' as const,
+        xpReward: 425,
+        estimatedTime: '7-9 hours',
+        technologies: ['Kubernetes', 'Docker', 'Helm', 'Prometheus', 'Grafana'],
+        prerequisites: ['Docker knowledge', 'Understanding of microservices'],
+        featured: true,
+        completionRate: 58,
+        rating: 4.8,
+        studentsCount: 234
+      }
+    ];
+
+    return {
+      data: baseProjects,
+      success: true
+    };
+  }
+
+  async enrollInProject(projectId: string) {
+    if (!this.isAuthenticated()) {
+      return {
+        data: null,
+        success: false,
+        message: 'Not authenticated'
+      };
+    }
+
+    await this.delay(500);
+    
+    return {
+      data: { projectId, enrolledAt: new Date(), progress: 0 },
+      success: true,
+      message: 'Successfully enrolled in project'
+    };
   }
 
   // Gamification endpoints
-  async getXPSummary(): Promise<{
-    totalXp: number;
-    level: { currentLevel: number; progressToNextLevel: number };
-    weeklyXp: number;
-    monthlyXp: number;
-    recentTransactions: XPTransaction[];
-  }> {
-    await delay(400);
-
-    if (!currentUser) {
-      throw new Error('Not authenticated');
+  async getUserStats() {
+    if (!this.isAuthenticated()) {
+      return {
+        data: null,
+        success: false,
+        message: 'Not authenticated'
+      };
     }
 
-    const currentLevel = Math.floor(Math.sqrt(currentUser.totalXp / 100));
-    const xpForCurrentLevel = currentLevel * currentLevel * 100;
-    const xpForNextLevel = (currentLevel + 1) * (currentLevel + 1) * 100;
-    const progressToNextLevel = ((currentUser.totalXp - xpForCurrentLevel) / (xpForNextLevel - xpForCurrentLevel)) * 100;
-
-    // Generate recent transactions if none exist
-    if (mockXPHistory.length === 0) {
-      mockXPHistory = [
-        {
-          id: generateId(),
-          userId: currentUser.id,
-          amount: 100,
-          sourceType: 'daily_login',
-          description: 'Daily check-in bonus',
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: generateId(),
-          userId: currentUser.id,
-          amount: 500,
-          sourceType: 'project_completion',
-          sourceId: '1',
-          description: 'Completed Todo App project',
-          createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-        }
-      ];
-    }
+    const stats = {
+      totalXP: this.currentUser?.xp || 0,
+      level: this.currentUser?.level || 1,
+      streak: this.currentUser?.streak || 0,
+      projectsCompleted: this.currentUser?.projects?.completed || 0,
+      badges: this.currentUser?.badges || [],
+      weeklyXP: 180,
+      monthlyXP: 720,
+      rank: 42,
+      nextLevelXP: ((this.currentUser?.level || 1) + 1) * 100
+    };
 
     return {
-      totalXp: currentUser.totalXp,
-      level: {
-        currentLevel,
-        progressToNextLevel: Math.max(0, Math.min(100, progressToNextLevel))
+      data: stats,
+      success: true
+    };
+  }
+
+  async getLeaderboard(timeframe: 'weekly' | 'monthly' | 'all-time' = 'weekly') {
+    await this.delay();
+    
+    // Mock leaderboard data
+    const leaderboard = Array.from({ length: 20 }, (_, i) => ({
+      rank: i + 1,
+      userId: `user-${i + 1}`,
+      username: `user${i + 1}`,
+      displayName: `User ${i + 1}`,
+      xp: 1000 - (i * 50),
+      level: Math.max(1, 10 - Math.floor(i / 2)),
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=user${i + 1}`,
+      streak: Math.max(0, 15 - i),
+      isCurrentUser: i === 5 // Mock current user at rank 6
+    }));
+
+    return {
+      data: leaderboard,
+      success: true
+    };
+  }
+
+  async getBadges() {
+    await this.delay();
+    const badges = [
+      { id: 'first-project', name: 'First Project', description: 'Completed your first project' },
+      { id: 'week-streak', name: 'Week Streak', description: '7-day learning streak' },
+      { id: 'code-reviewer', name: 'Code Reviewer', description: 'Gave helpful feedback' },
+    ];
+    return {
+      data: badges,
+      success: true
+    };
+  }
+
+  // Notifications endpoints
+  async getNotifications() {
+    if (!this.isAuthenticated()) {
+      return {
+        data: [],
+        success: false,
+        message: 'Not authenticated'
+      };
+    }
+
+    const notifications = [
+      {
+        id: 'notif-1',
+        type: 'achievement',
+        title: 'New Badge Earned!',
+        message: 'You earned the "Code Reviewer" badge',
+        timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
+        read: false,
+        actionUrl: '/profile?tab=badges'
       },
-      weeklyXp: 750,
-      monthlyXp: 2340,
-      recentTransactions: mockXPHistory.slice(0, 5)
-    };
-  }
-
-  async getStreakData(): Promise<StreakData> {
-    await delay(300);
-
-    if (!currentUser) {
-      throw new Error('Not authenticated');
-    }
-
-    return {
-      currentStreak: currentUser.currentStreak,
-      longestStreak: currentUser.longestStreak,
-      lastActivityDate: new Date().toISOString(),
-      streakFreezeUsed: 0,
-      streakFreezeAvailable: 3
-    };
-  }
-
-  async getUserBadges(): Promise<UserBadge[]> {
-    await delay(500);
-
-    if (!currentUser) {
-      throw new Error('Not authenticated');
-    }
-
-    // Generate some mock user badges
-    if (mockUserBadges.length === 0) {
-      mockUserBadges = [
-        {
-          id: generateId(),
-          userId: currentUser.id,
-          badge: mockBadges[0],
-          earnedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-        }
-      ];
-    }
-
-    return mockUserBadges.filter(ub => ub.userId === currentUser!.id);
-  }
-
-  async recordDailyCheckin(): Promise<{
-    xpAwarded: number;
-    streakBonus: number;
-    newStreak: number;
-    message: string;
-  }> {
-    await delay(600);
-
-    if (!currentUser) {
-      throw new Error('Not authenticated');
-    }
-
-    const baseXP = 50;
-    const streakBonus = Math.min(currentUser.currentStreak * 10, 100);
-    const totalXP = baseXP + streakBonus;
-
-    // Update user
-    currentUser.totalXp += totalXP;
-    currentUser.currentStreak += 1;
-    currentUser.longestStreak = Math.max(currentUser.longestStreak, currentUser.currentStreak);
-
-    return {
-      xpAwarded: baseXP,
-      streakBonus,
-      newStreak: currentUser.currentStreak,
-      message: 'Daily check-in complete!'
-    };
-  }
-
-  async getLeaderboard(): Promise<LeaderboardResponse> {
-    await delay(700);
-
-    const mockLeaderboard = [
-      { rank: 1, user: { id: '1', username: 'codemaster', level: 12 }, xp: 15420, change: 2 },
-      { rank: 2, user: { id: '2', username: 'devqueen', level: 11 }, xp: 13890, change: -1 },
-      { rank: 3, user: { id: '3', username: 'jswarrior', level: 11 }, xp: 12650, change: 1 },
-      { rank: 4, user: { id: '4', username: 'pythonista', level: 10 }, xp: 11230, change: 0 },
-      { rank: 5, user: { id: '5', username: 'reactninja', level: 10 }, xp: 10890, change: -2 },
+      {
+        id: 'notif-2',
+        type: 'project',
+        title: 'Project Update',
+        message: 'New hints available for "Build a Todo App"',
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
+        read: false,
+        actionUrl: '/projects/project-1'
+      },
+      {
+        id: 'notif-3',
+        type: 'social',
+        title: 'Streak Achievement',
+        message: 'Congratulations on your 12-day streak!',
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
+        read: true,
+        actionUrl: '/dashboard'
+      }
     ];
 
     return {
-      leaderboard: mockLeaderboard,
-      userPosition: currentUser ? {
-        rank: 42,
-        user: { id: currentUser.id, username: currentUser.username, level: Math.floor(Math.sqrt(currentUser.totalXp / 100)) },
-        xp: currentUser.totalXp,
-        change: 5
-      } : undefined,
-      meta: {
-        totalUsers: 1247,
-        lastUpdated: new Date().toISOString()
-      }
+      data: notifications,
+      success: true
+    };
+  }
+
+  async markNotificationAsRead(notificationId: string) {
+    if (!this.isAuthenticated()) {
+      return {
+        data: null,
+        success: false,
+        message: 'Not authenticated'
+      };
+    }
+
+    await this.delay(200);
+    
+    return {
+      data: { notificationId, read: true },
+      success: true
+    };
+  }
+
+  // Search endpoints
+  async searchProjects(query: string, filters?: any) {
+    await this.delay();
+    
+    const allProjects = await this.getAvailableProjects();
+    const filteredProjects = allProjects.data?.filter(project => 
+      project.title.toLowerCase().includes(query.toLowerCase()) ||
+      project.description.toLowerCase().includes(query.toLowerCase()) ||
+      project.technologies.some(tech => tech.toLowerCase().includes(query.toLowerCase()))
+    ) || [];
+
+    return {
+      data: filteredProjects,
+      success: true
+    };
+  }
+
+  // Analytics endpoints (for premium users)
+  async getUserAnalytics() {
+    if (!this.isAuthenticated()) {
+      return {
+        data: null,
+        success: false,
+        message: 'Not authenticated'
+      };
+    }
+
+    if (this.currentUser?.membership === 'free') {
+      return {
+        data: null,
+        success: false,
+        message: 'Premium membership required'
+      };
+    }
+
+    const analytics = {
+      studyTime: {
+        today: 45,
+        week: 280,
+        month: 1200
+      },
+      codeLines: {
+        week: 450,
+        month: 1800
+      },
+      accuracy: {
+        overall: 87,
+        lastWeek: 92
+      },
+      preferredLanguages: [
+        { language: 'JavaScript', percentage: 45 },
+        { language: 'Python', percentage: 30 },
+        { language: 'React', percentage: 25 }
+      ],
+      progressTrend: Array.from({ length: 30 }, (_, i) => ({
+        date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000),
+        xp: Math.floor(Math.random() * 50) + 10
+      }))
+    };
+
+    return {
+      data: analytics,
+      success: true
     };
   }
 }
 
+// Create singleton instance
 export const mockApiService = new MockApiService();
+
+// Export for use in components
+export default mockApiService;

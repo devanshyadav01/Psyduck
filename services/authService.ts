@@ -11,9 +11,16 @@ export interface User {
   totalXp: number;
   currentStreak: number;
   longestStreak: number;
-  skillLevel: 'beginner' | 'intermediate' | 'advanced';
+  skillLevel: 'beginner' | 'intermediate' | 'advanced' | 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+  membership?: 'basic' | 'premium' | 'pro';
   isActive: boolean;
   createdAt: string;
+  updatedAt?: string;
+  timezone?: string;
+  preferredLanguages?: string[];
+  achievements?: string[];
+  completedProjects?: string[];
+  emailVerified?: boolean;
   profile?: UserProfile;
 }
 

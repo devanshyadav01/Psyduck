@@ -18,7 +18,7 @@ export function Register() {
     skillLevel: 'beginner' as 'beginner' | 'intermediate' | 'advanced'
   });
   const [isLoading, setIsLoading] = useState(false);
-  const { register, error } = useAuth();
+  const { register } = useAuth();
   const { navigate } = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,8 +26,10 @@ export function Register() {
     setIsLoading(true);
 
     try {
-      await register(formData);
-      navigate('/dashboard');
+      const ok = await register(formData.email, formData.password, formData.username);
+      if (ok) {
+        navigate('/dashboard');
+      }
     } catch (error) {
       // Error is handled in the auth context
     } finally {
@@ -123,11 +125,7 @@ export function Register() {
               </Select>
             </div>
 
-            {error && (
-              <div className="text-sm text-destructive">
-                {error}
-              </div>
-            )}
+            {/* Error feedback is handled via toasts in the auth context */}
 
             <Button 
               type="submit" 

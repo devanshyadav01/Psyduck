@@ -1,231 +1,300 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import { Button } from './ui/button';
 import { Progress } from './ui/progress';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Skeleton } from './ui/skeleton';
-
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { 
-  Trophy, 
-  Star, 
-  Flame, 
-  TrendingUp, 
   BookOpen, 
-  Code, 
-  Users,
-  Target,
+  Trophy, 
+  Target, 
+  TrendingUp, 
   Calendar,
-  Play
+  Star,
+  Clock,
+  Users,
+  Zap,
+  Award,
+  PlayCircle,
+  ChevronRight,
+  Activity
 } from 'lucide-react';
-
 import { useAuth } from '../contexts/AuthContext';
-import { useUI } from '../contexts/UIContext';
-import { 
-  useUserProjects, 
-  useXPSummary, 
-  useStreakData, 
-  useUserBadges,
-  useDailyCheckin 
-} from '../hooks/useAPI';
-import { useRouter } from '../hooks/useRouter';
+import { useRouterContext } from '../contexts/RouterContext';
+import { mockApiService } from '../services/mockApiService';
+import { toast } from 'sonner';
 
-function calculateLevel(xp: number): number {
-  return Math.floor(Math.sqrt(xp / 100));
-}
-
-function formatTimeSpent(minutes: number): string {
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-  return `${hours}h ${remainingMinutes}m`;
-}
-
-function DashboardSkeleton() {
-  return (
-    <div className="p-6 space-y-6">
-      {/* Header skeleton */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-4 w-80" />
-        </div>
-        <div className="flex gap-4">
-          <Skeleton className="h-10 w-32" />
-          <Skeleton className="h-10 w-24" />
-        </div>
-      </div>
-
-      {/* Stats grid skeleton */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => (
-          <Card key={i}>
-            <CardContent className="p-6">
-              <Skeleton className="h-12 w-full" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Main content skeleton */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-4">
-          <Skeleton className="h-96 w-full" />
-        </div>
-        <div className="space-y-4">
-          <Skeleton className="h-48 w-full" />
-          <Skeleton className="h-48 w-full" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StatCard({ 
-  title, 
-  value, 
-  icon, 
-  trend, 
-  progress,
-  variant = 'default'
-}: {
+interface EnrolledProject {
+  id: string;
   title: string;
-  value: string | number;
-  icon: React.ReactNode;
-  trend?: number;
-  progress?: number;
-  variant?: 'default' | 'success' | 'warning';
-}) {
-  const cardClass = variant === 'success' ? 'border-psyduck-success/20 bg-psyduck-success-light' : '';
-
-  return (
-    <Card className={cardClass}>
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              {icon}
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">{title}</p>
-              <p className="text-2xl font-bold">{value}</p>
-            </div>
-          </div>
-          {trend !== undefined && (
-            <div className={`flex items-center gap-1 text-sm ${trend > 0 ? 'text-psyduck-success' : 'text-gray-500'}`}>
-              <TrendingUp className="h-4 w-4" />
-              {trend > 0 ? '+' : ''}{trend}%
-            </div>
-          )}
-        </div>
-        {progress !== undefined && (
-          <div className="mt-4">
-            <Progress value={progress} className="h-2" />
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
+  description: string;
+  domain: string;
+  difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
+  progress: number;
+  xpReward: number;
+  estimatedTime: string;
+  status: 'in-progress' | 'completed' | 'paused';
+  lastAccessed: Date;
+  technologies: string[];
 }
 
-function ActiveProjectCard({ project }: { project: any }) {
-  const { navigate } = useRouter();
-
-  return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <h3 className="font-semibold mb-1">{project.title}</h3>
-            <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-              {project.description}
-            </p>
-            
-            <div className="flex items-center gap-4 mb-3">
-              <Badge variant="outline" className="text-xs">
-                {project.difficulty}
-              </Badge>
-              <span className="text-xs text-muted-foreground">
-                {project.estimatedHours}h estimated
-              </span>
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span>Progress</span>
-                <span className="text-psyduck-primary font-medium">
-                  {project.userProgress?.progressPercentage || 0}%
-                </span>
-              </div>
-              <Progress value={project.userProgress?.progressPercentage || 0} />
-            </div>
-          </div>
-        </div>
-        
-        <div className="flex gap-2 mt-4">
-          <Button 
-            size="sm" 
-            className="flex-1 bg-psyduck-primary hover:bg-psyduck-primary-hover"
-            onClick={() => navigate(`/projects/${project.id}/ide`)}
-          >
-            <Play className="h-4 w-4 mr-2" />
-            Continue
-          </Button>
-          <Button 
-            size="sm" 
-            variant="outline"
-            onClick={() => navigate(`/projects/${project.id}`)}
-          >
-            View Details
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
+interface UserStats {
+  totalXP: number;
+  level: number;
+  streak: number;
+  projectsCompleted: number;
+  badges: string[];
+  weeklyXP: number;
+  monthlyXP: number;
+  rank: number;
+  nextLevelXP: number;
 }
 
-function RecentBadge({ badge }: { badge: any }) {
-  return (
-    <div className="flex items-center gap-3 p-3 bg-psyduck-soft/20 rounded-lg">
-      <div className="w-10 h-10 bg-psyduck-primary/10 rounded-lg flex items-center justify-center">
-        <Trophy className="h-5 w-5 text-psyduck-primary" />
-      </div>
-      <div>
-        <p className="font-medium text-sm">{badge.badge.name}</p>
-        <p className="text-xs text-muted-foreground">{badge.badge.description}</p>
-      </div>
-    </div>
-  );
+interface Notification {
+  id: string;
+  type: 'achievement' | 'project' | 'social';
+  title: string;
+  message: string;
+  timestamp: Date;
+  read: boolean;
+  actionUrl?: string;
 }
 
 export function Dashboard() {
-  const { user } = useAuth();
-  const { navigate } = useRouter();
+  const { user, isAuthenticated } = useAuth();
+  const { navigate } = useRouterContext();
   
-  // API hooks with error handling
-  const { data: userProjects, isLoading: projectsLoading, error: projectsError } = useUserProjects();
-  const { data: xpSummary, isLoading: xpLoading, error: xpError } = useXPSummary();
-  const { data: streakData, isLoading: streakLoading, error: streakError } = useStreakData();
-  const { data: badges, isLoading: badgesLoading, error: badgesError } = useUserBadges();
-  const { mutate: dailyCheckin, isPending: checkinLoading } = useDailyCheckin();
+  const [enrolledProjects, setEnrolledProjects] = useState<EnrolledProject[]>([]);
+  const [userStats, setUserStats] = useState<UserStats | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const isLoading = projectsLoading || xpLoading || streakLoading || badgesLoading;
-  const hasErrors = projectsError || xpError || streakError || badgesError;
+  // Set up mock API authentication when user changes
+  useEffect(() => {
+    if (user) {
+      // Generate a mock token for the authenticated user
+      const mockToken = `mock-token-${user.id}`;
+      mockApiService.setAuth(mockToken, user);
+    } else {
+      mockApiService.setAuth(null, null);
+    }
+  }, [user]);
 
-  if (isLoading) {
-    return <DashboardSkeleton />;
+  // Fetch dashboard data
+  useEffect(() => {
+    if (!isAuthenticated || !user) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchDashboardData = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        // Fetch all dashboard data in parallel
+        const [projectsResponse, statsResponse, notificationsResponse] = await Promise.allSettled([
+          mockApiService.getEnrolledProjects(),
+          mockApiService.getUserStats(),
+          mockApiService.getNotifications()
+        ]);
+
+        // Handle enrolled projects
+        if (projectsResponse.status === 'fulfilled' && projectsResponse.value.success) {
+          const data = (projectsResponse.value.data || []).map((p: any) => ({
+            id: p.id,
+            title: p.title,
+            description: p.description,
+            domain: p.domain,
+            difficulty: (p.difficulty === 'Beginner' || p.difficulty === 'Intermediate' || p.difficulty === 'Advanced') ? p.difficulty : 'Beginner',
+            progress: typeof p.progress === 'number' ? p.progress : 0,
+            xpReward: p.xpReward || 0,
+            estimatedTime: p.estimatedTime || '—',
+            status: (p.status === 'in-progress' || p.status === 'completed' || p.status === 'paused') ? p.status : 'in-progress',
+            lastAccessed: p.lastAccessed ? new Date(p.lastAccessed) : new Date(),
+            technologies: Array.isArray(p.technologies) ? p.technologies : [],
+          })) as EnrolledProject[];
+
+          setEnrolledProjects(data);
+        } else {
+          console.warn('Failed to fetch enrolled projects:', projectsResponse.status === 'rejected' ? projectsResponse.reason : projectsResponse.value.message);
+          // Fallback to empty array instead of showing error
+          setEnrolledProjects([]);
+        }
+
+        // Handle user stats
+        if (statsResponse.status === 'fulfilled' && statsResponse.value.success) {
+          setUserStats(statsResponse.value.data);
+        } else {
+          console.warn('Failed to fetch user stats:', statsResponse.status === 'rejected' ? statsResponse.reason : statsResponse.value.message);
+          // Fallback to user data from context
+          setUserStats({
+            totalXP: user.xp,
+            level: user.level,
+            streak: user.streak,
+            projectsCompleted: user.projects?.completed || 0,
+            badges: user.badges,
+            weeklyXP: 0,
+            monthlyXP: 0,
+            rank: 0,
+            nextLevelXP: (user.level + 1) * 100
+          });
+        }
+
+        // Handle notifications
+        if (notificationsResponse.status === 'fulfilled' && notificationsResponse.value.success) {
+          const notes = (notificationsResponse.value.data || []).map((n: any) => ({
+            id: n.id,
+            type: (n.type === 'achievement' || n.type === 'project' || n.type === 'social') ? n.type : 'project',
+            title: n.title,
+            message: n.message,
+            timestamp: n.timestamp ? new Date(n.timestamp) : new Date(),
+            read: !!n.read,
+            actionUrl: n.actionUrl,
+          })) as Notification[];
+
+          setNotifications(notes);
+        } else {
+          console.warn('Failed to fetch notifications:', notificationsResponse.status === 'rejected' ? notificationsResponse.reason : notificationsResponse.value.message);
+          setNotifications([]);
+        }
+
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        setError('Failed to load dashboard data. Please try refreshing the page.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [isAuthenticated, user]);
+
+  const handleProjectClick = (projectId: string) => {
+    navigate(`/projects/${projectId}`);
+  };
+
+  const handleContinueProject = (projectId: string) => {
+    navigate(`/projects/${projectId}/ide`);
+  };
+
+  const handleViewAllProjects = () => {
+    navigate('/projects');
+  };
+
+  const handleViewProfile = () => {
+    navigate('/profile');
+  };
+
+  const handleViewLeaderboard = () => {
+    navigate('/leaderboard');
+  };
+
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty.toLowerCase()) {
+      case 'beginner': return 'bg-green-100 text-green-800';
+      case 'intermediate': return 'bg-yellow-100 text-yellow-800';
+      case 'advanced': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getProgressColor = (progress: number) => {
+    if (progress >= 80) return 'bg-green-500';
+    if (progress >= 50) return 'bg-yellow-500';
+    return 'bg-blue-500';
+  };
+
+  const formatTimeAgo = (date: Date) => {
+    const now = new Date();
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) return 'Just now';
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays}d ago`;
+    return date.toLocaleDateString();
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="max-w-md w-full mx-4">
+          <CardContent className="p-6 text-center">
+            <h2 className="text-xl font-semibold mb-4">Please log in to view your dashboard</h2>
+            <Button onClick={() => navigate('/auth')} className="bg-psyduck-primary hover:bg-psyduck-primary-hover">
+              Go to Login
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
-  if (hasErrors) {
+  if (isLoading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-96">
-        <Card>
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8">
+          <div className="space-y-6">
+            {/* Loading skeleton */}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardContent className="p-6">
+                    <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
+                    <div className="h-8 bg-muted rounded w-1/2"></div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            <div className="grid gap-6 lg:grid-cols-3">
+              <div className="lg:col-span-2">
+                <Card className="animate-pulse">
+                  <CardHeader>
+                    <div className="h-6 bg-muted rounded w-1/3"></div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <div key={i} className="h-24 bg-muted rounded"></div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              <div>
+                <Card className="animate-pulse">
+                  <CardHeader>
+                    <div className="h-6 bg-muted rounded w-1/2"></div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <div key={i} className="h-16 bg-muted rounded"></div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="max-w-md w-full mx-4">
           <CardContent className="p-6 text-center">
-            <h3 className="font-semibold mb-2">Unable to load dashboard</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              There was an error loading your dashboard data. Please try again.
-            </p>
-            <Button onClick={() => window.location.reload()}>
+            <div className="text-destructive mb-4">
+              <Activity className="h-12 w-12 mx-auto mb-2" />
+              <h2 className="text-xl font-semibold">Unable to Load Dashboard</h2>
+            </div>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()} variant="outline">
               Refresh Page
             </Button>
           </CardContent>
@@ -234,213 +303,363 @@ export function Dashboard() {
     );
   }
 
-  const activeProjects = userProjects?.filter(p => p.status === 'in_progress') || [];
-  const completedProjects = userProjects?.filter(p => p.status === 'completed') || [];
-  const recentBadges = badges?.slice(0, 3) || [];
-  
-  const currentLevel = calculateLevel(user?.totalXp || 0);
-  const levelProgress = xpSummary?.level?.progressToNextLevel || 0;
-
-  const handleDailyCheckin = () => {
-    const today = new Date().toDateString();
-    const lastCheckin = streakData?.lastActivityDate ? new Date(streakData.lastActivityDate).toDateString() : '';
-    
-    if (today !== lastCheckin) {
-      dailyCheckin();
-    }
-  };
+  const unreadNotifications = notifications.filter(n => !n.read);
+  const recentProjects = enrolledProjects.slice(0, 3);
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Welcome Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1>Welcome back, {user?.firstName}! 🦆</h1>
-          <p className="text-muted-foreground">
-            Ready to continue your learning journey?
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          {/* Streak Display */}
-          {streakData && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-orange-50 dark:bg-orange-950/20 rounded-full">
-              <Flame className="h-4 w-4 text-orange-500" />
-              <span className="font-medium text-orange-700 dark:text-orange-300">
-                {streakData.currentStreak} day streak
-              </span>
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="border-b bg-card">
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold">Welcome back, {user?.displayName}! 🦆</h1>
+              <p className="text-muted-foreground mt-1">
+                Ready to continue your coding journey?
+              </p>
             </div>
-          )}
-          
-          {/* XP Display */}
-          <div className="flex items-center gap-2">
-            <Star className="h-4 w-4 text-psyduck-primary" />
-            <span className="font-medium">{(user?.totalXp || 0).toLocaleString()} XP</span>
-            <Badge variant="secondary">Level {currentLevel}</Badge>
+            <div className="flex items-center gap-3">
+              <Badge variant="outline" className="text-psyduck-primary border-psyduck-primary">
+                <Star className="h-3 w-3 mr-1" />
+                Level {userStats?.level || user?.level}
+              </Badge>
+              {user?.membership === 'premium' && (
+                <Badge className="bg-yellow-100 text-yellow-800">
+                  <Trophy className="h-3 w-3 mr-1" />
+                  Premium
+                </Badge>
+              )}
+            </div>
           </div>
-          
-          {/* Daily Check-in Button */}
-          <Button
-            onClick={handleDailyCheckin}
-            disabled={checkinLoading}
-            size="sm"
-            className="bg-psyduck-success hover:bg-psyduck-success/90"
-          >
-            <Calendar className="h-4 w-4 mr-2" />
-            {checkinLoading ? 'Checking in...' : 'Daily Check-in'}
-          </Button>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <StatCard
-          title="Projects Completed"
-          value={completedProjects.length}
-          icon={<Trophy className="h-4 w-4 text-psyduck-primary" />}
-          variant="success"
-        />
-        
-        <StatCard
-          title="Current Level"
-          value={currentLevel}
-          icon={<Star className="h-4 w-4 text-yellow-500" />}
-          progress={levelProgress}
-        />
-        
-        <StatCard
-          title="Active Projects"
-          value={activeProjects.length}
-          icon={<BookOpen className="h-4 w-4 text-blue-500" />}
-        />
-        
-        <StatCard
-          title="Weekly XP"
-          value={xpSummary?.weeklyXp || 0}
-          icon={<TrendingUp className="h-4 w-4 text-green-500" />}
-        />
-      </div>
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Active Projects */}
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Code className="h-5 w-5" />
-                Continue Learning
-              </CardTitle>
-              <CardDescription>
-                Pick up where you left off
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {activeProjects.length > 0 ? (
-                <div className="grid gap-4">
-                  {activeProjects.slice(0, 3).map(project => (
-                    <ActiveProjectCard key={project.id} project={project} />
-                  ))}
-                  {activeProjects.length > 3 && (
-                    <Button 
-                      variant="outline" 
-                      onClick={() => navigate('/projects')}
-                      className="mt-2"
-                    >
-                      View All Active Projects ({activeProjects.length})
-                    </Button>
-                  )}
+      <div className="container mx-auto px-4 py-8">
+        <div className="space-y-8">
+          {/* Stats Overview */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Total XP</p>
+                    <p className="text-2xl font-bold text-psyduck-primary">
+                      {userStats?.totalXP?.toLocaleString() || user?.xp?.toLocaleString() || '0'}
+                    </p>
+                  </div>
+                  <Zap className="h-8 w-8 text-psyduck-primary" />
                 </div>
-              ) : (
-                <div className="text-center py-12">
-                  <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="font-semibold mb-2">No active projects</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Start a new project to begin your learning journey
-                  </p>
+                <div className="mt-4">
+                  <div className="flex items-center text-xs text-muted-foreground">
+                    <TrendingUp className="h-3 w-3 mr-1" />
+                    +{userStats?.weeklyXP || 0} this week
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Current Streak</p>
+                    <p className="text-2xl font-bold text-psyduck-success">
+                      {userStats?.streak || user?.streak || 0} days
+                    </p>
+                  </div>
+                  <Calendar className="h-8 w-8 text-psyduck-success" />
+                </div>
+                <div className="mt-4">
+                  <div className="flex items-center text-xs text-muted-foreground">
+                    <Target className="h-3 w-3 mr-1" />
+                    Keep it up!
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Projects Completed</p>
+                    <p className="text-2xl font-bold">
+                      {userStats?.projectsCompleted || user?.projects?.completed || 0}
+                    </p>
+                  </div>
+                  <BookOpen className="h-8 w-8 text-blue-500" />
+                </div>
+                <div className="mt-4">
+                  <div className="flex items-center text-xs text-muted-foreground">
+                    <Award className="h-3 w-3 mr-1" />
+                    {enrolledProjects.length} in progress
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Global Rank</p>
+                    <p className="text-2xl font-bold text-purple-600">
+                      #{userStats?.rank || 'N/A'}
+                    </p>
+                  </div>
+                  <Users className="h-8 w-8 text-purple-600" />
+                </div>
+                <div className="mt-4">
                   <Button 
-                    onClick={() => navigate('/projects')}
-                    className="bg-psyduck-primary hover:bg-psyduck-primary-hover"
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={handleViewLeaderboard}
+                    className="text-xs p-0 h-auto"
                   >
-                    Explore Projects
+                    View Leaderboard <ChevronRight className="h-3 w-3 ml-1" />
                   </Button>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </div>
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Recent Achievements */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Trophy className="h-5 w-5" />
-                Recent Achievements
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {recentBadges.length > 0 ? (
-                <div className="space-y-3">
-                  {recentBadges.map(badge => (
-                    <RecentBadge key={badge.id} badge={badge} />
-                  ))}
+          {/* Main Content */}
+          <div className="grid gap-8 lg:grid-cols-3">
+            {/* Projects Section */}
+            <div className="lg:col-span-2 space-y-6">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <BookOpen className="h-5 w-5 text-psyduck-primary" />
+                      Continue Learning
+                    </CardTitle>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={handleViewAllProjects}
+                      className="text-psyduck-primary hover:text-psyduck-primary-hover"
+                    >
+                      View All <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </div>
+                  <CardDescription>
+                    Pick up where you left off
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {recentProjects.length > 0 ? (
+                    <div className="space-y-4">
+                      {recentProjects.map((project) => (
+                        <div
+                          key={project.id}
+                          className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+                          onClick={() => handleProjectClick(project.id)}
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <h3 className="font-medium mb-1">{project.title}</h3>
+                              <p className="text-sm text-muted-foreground mb-2">
+                                {project.description}
+                              </p>
+                              <div className="flex items-center gap-2 mb-3">
+                                <Badge variant="secondary" className={getDifficultyColor(project.difficulty)}>
+                                  {project.difficulty}
+                                </Badge>
+                                <Badge variant="outline" className="text-xs">
+                                  {project.domain}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground flex items-center">
+                                  <Clock className="h-3 w-3 mr-1" />
+                                  {project.estimatedTime}
+                                </span>
+                              </div>
+                            </div>
+                            <Button
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleContinueProject(project.id);
+                              }}
+                              className="bg-psyduck-primary hover:bg-psyduck-primary-hover"
+                            >
+                              <PlayCircle className="h-4 w-4 mr-1" />
+                              Continue
+                            </Button>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">Progress</span>
+                              <span className="font-medium">{project.progress}%</span>
+                            </div>
+                            <Progress 
+                              value={project.progress} 
+                              className="h-2" 
+                            />
+                          </div>
+                          
+                          <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Star className="h-3 w-3" />
+                              {project.xpReward} XP
+                            </div>
+                            <span>Last accessed {formatTimeAgo(project.lastAccessed)}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="font-medium mb-2">No projects yet</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Start your coding journey by enrolling in a project
+                      </p>
+                      <Button 
+                        onClick={handleViewAllProjects}
+                        className="bg-psyduck-primary hover:bg-psyduck-primary-hover"
+                      >
+                        Explore Projects
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Sidebar */}
+            <div className="space-y-6">
+              {/* Level Progress */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Trophy className="h-5 w-5 text-yellow-500" />
+                    Level Progress
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-psyduck-primary">
+                        Level {userStats?.level || user?.level}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {userStats?.totalXP || user?.xp} / {userStats?.nextLevelXP || ((user?.level || 1) + 1) * 100} XP
+                      </p>
+                    </div>
+                    <Progress 
+                      value={((userStats?.totalXP || user?.xp || 0) % 100)} 
+                      className="h-3" 
+                    />
+                    <p className="text-xs text-center text-muted-foreground">
+                      {(userStats?.nextLevelXP || ((user?.level || 1) + 1) * 100) - (userStats?.totalXP || user?.xp || 0)} XP to next level
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Recent Activity/Notifications */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Activity className="h-5 w-5 text-blue-500" />
+                      Recent Activity
+                    </CardTitle>
+                    {unreadNotifications.length > 0 && (
+                      <Badge variant="secondary" className="bg-psyduck-primary text-white">
+                        {unreadNotifications.length}
+                      </Badge>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {notifications.length > 0 ? (
+                    <div className="space-y-3">
+                      {notifications.slice(0, 4).map((notification) => (
+                        <div
+                          key={notification.id}
+                          className={`p-3 rounded-lg border transition-colors cursor-pointer ${
+                            !notification.read ? 'bg-blue-50 border-blue-200' : 'bg-background'
+                          }`}
+                          onClick={() => {
+                            if (notification.actionUrl) {
+                              navigate(notification.actionUrl);
+                            }
+                          }}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`p-1 rounded-full ${
+                              notification.type === 'achievement' ? 'bg-yellow-100' :
+                              notification.type === 'project' ? 'bg-blue-100' : 'bg-green-100'
+                            }`}>
+                              {notification.type === 'achievement' ? (
+                                <Trophy className="h-3 w-3 text-yellow-600" />
+                              ) : notification.type === 'project' ? (
+                                <BookOpen className="h-3 w-3 text-blue-600" />
+                              ) : (
+                                <Users className="h-3 w-3 text-green-600" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {notification.title}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {notification.message}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {formatTimeAgo(notification.timestamp)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <Activity className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">No recent activity</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Quick Actions */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Quick Actions</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
                   <Button 
                     variant="outline" 
-                    size="sm" 
-                    className="w-full"
-                    onClick={() => navigate('/profile?tab=badges')}
+                    className="w-full justify-start"
+                    onClick={handleViewAllProjects}
                   >
-                    View All Badges ({badges?.length || 0})
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    Browse Projects
                   </Button>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Trophy className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    Complete projects to earn badges
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5" />
-                Quick Actions
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button 
-                className="w-full justify-start bg-psyduck-primary hover:bg-psyduck-primary-hover"
-                onClick={() => navigate('/projects')}
-              >
-                <BookOpen className="h-4 w-4 mr-2" />
-                Browse Projects
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                className="w-full justify-start"
-                onClick={() => navigate('/leaderboard')}
-              >
-                <Users className="h-4 w-4 mr-2" />
-                View Leaderboard
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                className="w-full justify-start"
-                onClick={() => navigate('/profile')}
-              >
-                <Star className="h-4 w-4 mr-2" />
-                My Profile
-              </Button>
-            </CardContent>
-          </Card>
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start"
+                    onClick={handleViewProfile}
+                  >
+                    <Users className="h-4 w-4 mr-2" />
+                    View Profile
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start"
+                    onClick={handleViewLeaderboard}
+                  >
+                    <Trophy className="h-4 w-4 mr-2" />
+                    Leaderboard
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -1,101 +1,144 @@
 # Psyduck Development Guidelines
 
-## Project Overview
-Psyduck is a project-based learning platform that combines GitHub + LeetCode + Upwork with gamification elements. The platform teaches users through building real projects organized into domains (MERN Stack, Flutter/React Native, Data Analytics, AI/ML) and difficulty levels (Beginner → Intermediate → Advanced).
+## 🎯 Project Overview
+Psyduck is a gamified project-based learning platform that combines GitHub + LeetCode + Upwork with comprehensive gamification elements.
 
-## Design System
-- **Primary Color**: #E67514 (Psyduck Orange)
-- **Dark Background**: #212121
-- **Success/Progress**: #06923E 
-- **Soft Background**: #D3ECCD
-- **Modern, gamified UI with progress bars, streak counters, and achievement systems**
+## 🎨 Design System Guidelines
 
-## Project Structure & Architecture
+### Colors & Branding
+- **Primary Color**: `#E67514` (Psyduck Orange) - Use `bg-psyduck-primary` or `text-psyduck-primary`
+- **Dark Background**: `#212121` - Use `bg-psyduck-dark`
+- **Success Color**: `#06923E` - Use `bg-psyduck-success` or `text-psyduck-success`
+- **Soft Backgrounds**: `#D3ECCD` - Use `bg-psyduck-soft`
+
+### Typography
+- Use the default typography system defined in globals.css
+- Do NOT override font sizes, weights, or line-heights unless specifically requested
+- Button text should use medium font weight (already applied by default)
+
+### Layout & Spacing
+- Use flexbox and grid by default, avoid absolute positioning unless necessary
+- Maintain consistent spacing using Tailwind's spacing scale
+- Ensure responsive design for mobile and desktop
+
+## 🧩 Component Guidelines
+
+### UI Components
+- Use ShadCN components from `./components/ui/` directory
+- Import format: `import { Button } from './components/ui/button'`
+- Do NOT create custom versions of existing ShadCN components
+
+### Custom Components
+- Place reusable components in `/components` directory
+- Use TypeScript interfaces for all props
+- Include proper error handling and loading states
+- Follow the naming convention: PascalCase for component names
+
+### Gamification Elements
+- Always include XP values, badges, streaks where appropriate
+- Use Psyduck primary color for gamification elements
+- Include progress indicators and achievement feedback
+
+## 🔧 Development Standards
+
+### Code Quality
+- Use TypeScript for all components and utilities
+- Include proper type definitions for props and state
+- Handle loading states and errors gracefully
+- Use React Query for data fetching and caching
 
 ### File Organization
-- **Types**: All TypeScript types in `/types/` directory
-- **Configuration**: App configuration and constants in `/config/` directory  
-- **Hooks**: Custom React hooks in `/hooks/` directory
-- **Utils**: Utility functions in `/utils/` directory
-- **Components**: 
-  - Main components in `/components/`
-  - UI components in `/components/ui/`
-
-### Routing & Navigation
-- Use the centralized routing system via `useRouter` hook
-- All route configuration is managed in `/config/routes.ts`
-- Page keys are type-safe using the `PageKey` type
-- Navigation handlers are standardized through `NavigationHandlers` interface
-
-### Performance Guidelines
-- Components are directly imported (no lazy loading currently)
-- Proper loading states for better UX
-- Efficient state management
-
-### Code Organization Best Practices
-- **Separation of Concerns**: Keep routing logic, authentication, and UI rendering separate
-- **Type Safety**: Always use TypeScript types for props, state, and function parameters
-- **Reusability**: Extract common logic into custom hooks
-- **Modularity**: Break down large components into smaller, focused components
-- **Configuration-Driven**: Use configuration objects instead of hardcoded values
-
-### Component Guidelines
-- Use functional components with hooks
-- Implement proper error boundaries where needed
-- Keep components focused on single responsibilities
-- Extract complex logic into custom hooks
-- Use proper TypeScript typing for all props
-- Export components as named exports (not default exports)
-- **IMPORTANT**: Do not use default parameters in component props (e.g., `= {}`)
-
-### State Management
-- Use React's built-in state management (useState, useContext) 
-- Extract complex state logic into custom hooks
-- Keep global state minimal and well-defined
-
-### Styling Guidelines
-- Use Tailwind CSS classes consistently
-- Leverage CSS custom properties for theme colors
-- Follow the established design system with Psyduck brand colors
-- Maintain responsive design principles
-- Use semantic HTML elements
-- **IMPORTANT**: Do not use Tailwind classes for font size (e.g. text-2xl), font weight (e.g. font-bold), or line-height (e.g. leading-none), unless specifically requested by the user
-
-### Authentication & Authorization
-- All authentication logic is centralized in `AuthContext`
-- Protected routes are configured declaratively
-- Authentication state is managed globally
-- Proper loading states during auth checks
+- Keep components focused and single-purpose
+- Extract constants, helpers, and utilities to separate files
+- Use consistent import ordering: React, libraries, local imports
+- File naming: kebab-case for utilities, PascalCase for components
 
 ### Error Handling
-- Implement proper error boundaries
-- Handle loading states consistently
-- Provide meaningful error messages to users
-- Log errors appropriately for debugging
+- Always include try-catch blocks for async operations
+- Provide user-friendly error messages
+- Use toast notifications for user feedback
+- Log errors to console in development mode
 
-### Brand Colors Usage
-- Use `bg-psyduck-primary` for primary buttons and accents
-- Use `bg-psyduck-dark` for dark backgrounds  
-- Use `bg-psyduck-success` for success states and progress
-- Use `bg-psyduck-soft` for soft background areas
-- Use `text-psyduck-primary` for primary text accents
-- Use `hover:bg-psyduck-primary-hover` for button hover states
+## 📱 User Experience Guidelines
 
-### Component Export Standards
-- Always use named exports for components: `export function ComponentName() {}`
-- Never use default exports for components
-- Never use default parameter syntax like `({ prop }: Props = {})`
-- Always make required props explicit in the interface
+### Loading States
+- Show skeleton loading for content areas
+- Use spinners for button actions
+- Display progress indicators for long operations
+- Provide feedback for user actions
 
-### Testing Considerations
-- Components should be easily testable in isolation
-- Mock external dependencies properly
-- Test both authenticated and unauthenticated states
-- Ensure proper cleanup in effects and event listeners
+### Navigation
+- Use consistent navigation patterns
+- Highlight active navigation items
+- Include breadcrumbs for deep navigation
+- Ensure keyboard accessibility
 
-## Recent Architecture Changes
-- Removed lazy loading to simplify component imports
-- Centralized routing logic in `useRouter` hook
-- Type-safe navigation system with `PageKey` union type
-- Configuration-driven route management
-- Proper separation of concerns between routing, auth, and UI components
+### Forms
+- Include proper form validation
+- Show clear error states
+- Use consistent button styles
+- Provide success feedback
+
+## 🎮 Gamification Patterns
+
+### XP System
+- Award XP for meaningful actions (project completion, daily login)
+- Show XP gains with animated feedback
+- Display current level and progress to next level
+
+### Badges & Achievements
+- Use consistent badge styling with Psyduck colors
+- Show badge rarity with visual indicators
+- Include badge descriptions and earning criteria
+
+### Progress Tracking
+- Show visual progress bars for projects
+- Include time estimates and completion percentages
+- Highlight milestones and achievements
+
+## 🛠️ Technical Guidelines
+
+### Performance
+- Use React.memo for expensive components
+- Implement lazy loading for routes and heavy components
+- Optimize images and assets
+- Monitor bundle size and performance metrics
+
+### Accessibility
+- Include proper ARIA labels and roles
+- Ensure keyboard navigation support
+- Use semantic HTML elements
+- Test with screen readers
+
+### Testing
+- Write unit tests for utility functions
+- Include integration tests for user flows
+- Test error states and edge cases
+- Ensure responsive design works across devices
+
+## 🚀 Deployment Guidelines
+
+### Environment Configuration
+- Use environment variables for API endpoints
+- Configure different settings for dev/staging/production
+- Include proper error monitoring (Sentry)
+- Set up analytics tracking
+
+### Build Optimization
+- Enable tree shaking for smaller bundles
+- Use proper caching strategies
+- Optimize images and static assets
+- Configure CDN for static files
+
+## 📋 Code Review Checklist
+
+Before submitting code:
+- [ ] TypeScript types are properly defined
+- [ ] Components follow naming conventions
+- [ ] Error handling is implemented
+- [ ] Loading states are included
+- [ ] Responsive design is verified
+- [ ] Accessibility features are included
+- [ ] Performance impact is considered
+- [ ] Tests are written and passing
+- [ ] Code is properly documented

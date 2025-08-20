@@ -41,6 +41,16 @@ export const ROUTE_CONFIG: Record<PageKey, RouteConfig> = {
     protected: true,
     showChatbot: true,
   },
+  'recruiting-form': {
+    key: 'recruiting-form',
+    protected: true,
+    showChatbot: false,
+  },
+  'content-creator': {
+    key: 'content-creator',
+    protected: true,
+    showChatbot: true,
+  },
   notifications: {
     key: 'notifications',
     protected: true,

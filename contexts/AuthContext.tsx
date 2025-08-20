@@ -1,332 +1,309 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { authService, User } from '../services/authService';
-import { socketService } from '../services/socketService';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { toast } from 'sonner';
+import { apiService } from '../services/apiService';
 
-interface AuthState {
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  displayName: string;
+  membership: 'free' | 'premium' | 'pro';
+  xp: number;
+  level: number;
+  avatar?: string;
+  avatarUrl?: string;
+  joinedAt: Date;
+  streak: number;
+  currentStreak?: number;
+  longestStreak?: number;
+  badges: string[];
+  // Optional profile fields for UI compatibility
+  firstName?: string;
+  lastName?: string;
+  bio?: string;
+  skillLevel?: 'beginner' | 'intermediate' | 'advanced' | 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+  preferredLanguages?: string[];
+  timezone?: string;
+  location?: string;
+  website?: string;
+  githubUrl?: string;
+  linkedinUrl?: string;
+  portfolioUrl?: string;
+  jobTitle?: string;
+  company?: string;
+  yearsOfExperience?: number;
+  interests?: string[];
+  goals?: string[];
+  totalXp?: number;
+  projects?: {
+    completed: number;
+    inProgress: number;
+    total: number;
+  };
+}
+
+interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  error: string | null;
-}
-
-type AuthAction =
-  | { type: 'AUTH_START' }
-  | { type: 'AUTH_SUCCESS'; payload: User }
-  | { type: 'AUTH_ERROR'; payload: string }
-  | { type: 'AUTH_LOGOUT' }
-  | { type: 'UPDATE_USER'; payload: Partial<User> }
-  | { type: 'CLEAR_ERROR' };
-
-const initialState: AuthState = {
-  user: null,
-  isAuthenticated: false,
-  isLoading: true,
-  error: null,
-};
-
-function authReducer(state: AuthState, action: AuthAction): AuthState {
-  switch (action.type) {
-    case 'AUTH_START':
-      return { ...state, isLoading: true, error: null };
-    
-    case 'AUTH_SUCCESS':
-      return {
-        ...state,
-        user: action.payload,
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-      };
-    
-    case 'AUTH_ERROR':
-      return {
-        ...state,
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-        error: action.payload,
-      };
-    
-    case 'AUTH_LOGOUT':
-      return {
-        ...initialState,
-        isLoading: false,
-      };
-    
-    case 'UPDATE_USER':
-      return {
-        ...state,
-        user: state.user ? { ...state.user, ...action.payload } : null,
-      };
-    
-    case 'CLEAR_ERROR':
-      return { ...state, error: null };
-    
-    default:
-      return state;
-  }
-}
-
-interface AuthContextType extends AuthState {
-  login: (email: string, password: string) => Promise<void>;
-  register: (userData: {
-    email: string;
-    password: string;
-    username: string;
-    firstName: string;
-    lastName: string;
-    skillLevel: 'beginner' | 'intermediate' | 'advanced';
-  }) => Promise<void>;
-  logout: () => Promise<void>;
-  updateProfile: (data: Partial<User>) => Promise<void>;
-  forgotPassword: (email: string) => Promise<void>;
-  resetPassword: (token: string, newPassword: string) => Promise<void>;
-  verifyEmail: (token: string) => Promise<void>;
-  resendVerification: () => Promise<void>;
-  clearError: () => void;
-  refreshAuth: () => Promise<void>;
+  login: (email: string, password: string) => Promise<boolean>;
+  logout: () => void;
+  register: (email: string, password: string, username: string) => Promise<boolean>;
+  updateUser: (updates: Partial<User>) => void;
+  updateProfile: (updates: Partial<User>) => Promise<boolean>;
+  upgradeToPremium: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}
+};
+
+// Demo user data with premium membership
+const DEMO_USER: User = {
+  id: 'demo-user-123',
+  username: 'demo',
+  email: 'demo@psyduck.dev',
+  displayName: 'Demo User',
+  membership: 'premium', // Changed from 'free' to 'premium'
+  xp: 2340,
+  totalXp: 2340,
+  level: 7,
+  avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo',
+  avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo',
+  joinedAt: new Date('2024-01-15'),
+  streak: 12,
+  currentStreak: 12,
+  longestStreak: 15,
+  badges: ['first-project', 'week-streak', 'code-reviewer', 'premium-member'],
+  firstName: 'Demo',
+  lastName: 'User',
+  bio: 'Learning by building cool projects with Psyduck.',
+  skillLevel: 'Intermediate',
+  preferredLanguages: ['JavaScript', 'TypeScript'],
+  timezone: 'UTC',
+  location: 'Internet',
+  website: 'https://psyduck.dev',
+  githubUrl: 'https://github.com/psyduck-platform',
+  linkedinUrl: 'https://www.linkedin.com/company/psyduck',
+  portfolioUrl: 'https://psyduck.dev',
+  jobTitle: 'Developer',
+  company: 'Psyduck',
+  yearsOfExperience: 3,
+  interests: ['Web', 'AI'],
+  projects: {
+    completed: 8,
+    inProgress: 2,
+    total: 10
+  }
+};
 
 interface AuthProviderProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
-export function AuthProvider({ children }: AuthProviderProps) {
-  const [state, dispatch] = useReducer(authReducer, initialState);
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize auth state on app load
+  // Initialize auth state and API service
   useEffect(() => {
-    const initializeAuth = async () => {
-      const token = localStorage.getItem('psyduck_token');
-      
-      if (!token) {
-        dispatch({ type: 'AUTH_LOGOUT' });
-        return;
-      }
-
+    const initAuth = () => {
       try {
-        dispatch({ type: 'AUTH_START' });
-        const user = await authService.getCurrentUser();
-        dispatch({ type: 'AUTH_SUCCESS', payload: user });
+        const savedUser = localStorage.getItem('psyduck_user');
+        const savedToken = localStorage.getItem('psyduck_token');
         
-        // Connect to Socket.IO for real-time updates
-        socketService.connect(token);
-        
-        // Setup real-time listeners
-        setupRealtimeListeners();
-        
+        if (savedUser && savedToken) {
+          const parsedUser = JSON.parse(savedUser);
+          setUser(parsedUser);
+          
+          // Initialize API service with saved auth
+          apiService.setAuth(savedToken, parsedUser);
+        } else {
+          // Clear API service auth
+          apiService.setAuth(null, null);
+        }
       } catch (error) {
-        console.error('Auth initialization failed:', error);
+        console.error('Failed to load user from localStorage:', error);
+        localStorage.removeItem('psyduck_user');
         localStorage.removeItem('psyduck_token');
-        dispatch({ type: 'AUTH_ERROR', payload: 'Authentication failed' });
+        apiService.setAuth(null, null);
       }
+      setIsLoading(false);
     };
 
-    initializeAuth();
-
-    // Cleanup on unmount
-    return () => {
-      socketService.disconnect();
-    };
+    // Simulate initial auth check
+    setTimeout(initAuth, 500);
   }, []);
 
-  // Setup real-time event listeners
-  const setupRealtimeListeners = () => {
-    try {
-      // XP Updates
-      const unsubscribeXP = socketService.subscribeToXPUpdates((data) => {
-        if (data.userId === state.user?.id) {
-          dispatch({ 
-            type: 'UPDATE_USER', 
-            payload: { totalXp: data.newTotal } 
-          });
-          
-          if (data.levelUp) {
-            toast.success(`🎉 Level Up! You're now level ${Math.floor(Math.sqrt(data.newTotal / 100))}`);
-          } else {
-            toast.success(`+${data.amount} XP earned from ${data.source.replace('_', ' ')}`);
-          }
-        }
-      });
-
-      // Badge Updates
-      const unsubscribeBadges = socketService.subscribeToBadgeUpdates((data) => {
-        if (data.userId === state.user?.id) {
-          toast.success(`🏆 Badge Unlocked: ${data.badgeName}! (+${data.xpAwarded} XP)`);
-        }
-      });
-
-      // Store unsubscribe functions for cleanup
-      return () => {
-        unsubscribeXP();
-        unsubscribeBadges();
-      };
-    } catch (error) {
-      console.warn('Failed to setup real-time listeners:', error);
-    }
-  };
-
-  const login = async (email: string, password: string) => {
-    try {
-      dispatch({ type: 'AUTH_START' });
-      const response = await authService.login({ email, password });
-      dispatch({ type: 'AUTH_SUCCESS', payload: response.user });
-      
-      // Connect to Socket.IO
-      socketService.connect(response.token);
-      setupRealtimeListeners();
-      
-      toast.success(`Welcome back, ${response.user.firstName}! 🦆`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Login failed';
-      dispatch({ type: 'AUTH_ERROR', payload: message });
-      toast.error(message);
-    }
-  };
-
-  const register = async (userData: {
-    email: string;
-    password: string;
-    username: string;
-    firstName: string;
-    lastName: string;
-    skillLevel: 'beginner' | 'intermediate' | 'advanced';
-  }) => {
-    try {
-      dispatch({ type: 'AUTH_START' });
-      const response = await authService.register(userData);
-      dispatch({ type: 'AUTH_SUCCESS', payload: response.user });
-      
-      // Connect to Socket.IO
-      socketService.connect(response.token);
-      setupRealtimeListeners();
-      
-      toast.success(`Welcome to Psyduck, ${response.user.firstName}! 🎉`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Registration failed';
-      dispatch({ type: 'AUTH_ERROR', payload: message });
-      toast.error(message);
-    }
-  };
-
-  const logout = async () => {
-    try {
-      await authService.logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      socketService.disconnect();
-      dispatch({ type: 'AUTH_LOGOUT' });
-      toast.info('Logged out successfully');
-    }
-  };
-
-  const updateProfile = async (data: Partial<User>) => {
-    try {
-      const updatedUser = await authService.updateProfile(data);
-      dispatch({ type: 'UPDATE_USER', payload: updatedUser });
-      toast.success('Profile updated successfully');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to update profile';
-      toast.error(message);
-      throw error;
-    }
-  };
-
-  const forgotPassword = async (email: string) => {
-    try {
-      await authService.forgotPassword({ email });
-      toast.success('Password reset email sent! Check your inbox.');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to send reset email';
-      toast.error(message);
-      throw error;
-    }
-  };
-
-  const resetPassword = async (token: string, newPassword: string) => {
-    try {
-      await authService.resetPassword({ token, newPassword });
-      toast.success('Password reset successfully! You can now login.');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to reset password';
-      toast.error(message);
-      throw error;
-    }
-  };
-
-  const verifyEmail = async (token: string) => {
-    try {
-      await authService.verifyEmail(token);
-      dispatch({ type: 'UPDATE_USER', payload: { emailVerified: true } });
-      toast.success('Email verified successfully!');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Email verification failed';
-      toast.error(message);
-      throw error;
-    }
-  };
-
-  const resendVerification = async () => {
-    try {
-      await authService.resendVerification();
-      toast.success('Verification email sent! Check your inbox.');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to resend verification';
-      toast.error(message);
-      throw error;
-    }
-  };
-
-  const refreshAuth = async () => {
-    try {
-      const response = await authService.refreshToken();
-      dispatch({ type: 'AUTH_SUCCESS', payload: response.user });
-    } catch (error) {
-      console.error('Token refresh failed:', error);
-      logout();
-    }
-  };
-
-  const clearError = () => {
-    dispatch({ type: 'CLEAR_ERROR' });
-  };
-
-  // Auto-refresh token before expiration
+  // Update API service when user changes
   useEffect(() => {
-    if (!state.isAuthenticated) return;
+    if (user) {
+      const token = localStorage.getItem('psyduck_token') || `mock-token-${user.id}`;
+      apiService.setAuth(token, user);
+    } else {
+      apiService.setAuth(null, null);
+    }
+  }, [user]);
 
-    const refreshInterval = setInterval(() => {
-      refreshAuth();
-    }, 14 * 60 * 1000); // Refresh every 14 minutes (token expires in 15 minutes)
+  const login = async (email: string, password: string): Promise<boolean> => {
+    setIsLoading(true);
+    
+    try {
+      const response = await apiService.login(email, password);
+      
+      if (response.success && response.data) {
+        const { token, user: userData } = response.data;
+        
+        setUser(userData);
+        localStorage.setItem('psyduck_user', JSON.stringify(userData));
+        localStorage.setItem('psyduck_token', token);
+        
+        // API service auth is set automatically via the useEffect above
+        
+        if (userData.membership === 'premium' || userData.membership === 'pro') {
+          toast.success('Welcome back! You have premium access.');
+        } else {
+          toast.success('Login successful!');
+        }
+        
+        return true;
+      } else {
+        toast.error(response.message || 'Login failed');
+        return false;
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('Login failed. Please try again.');
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    return () => clearInterval(refreshInterval);
-  }, [state.isAuthenticated]);
+  const register = async (email: string, password: string, username: string): Promise<boolean> => {
+    setIsLoading(true);
+    
+    try {
+      const response = await apiService.register(email, password, username);
+      
+      if (response.success && response.data) {
+        const { token, user: userData } = response.data;
+        
+        setUser(userData);
+        localStorage.setItem('psyduck_user', JSON.stringify(userData));
+        localStorage.setItem('psyduck_token', token);
+        
+        toast.success('Registration successful! Welcome to Psyduck!');
+        return true;
+      } else {
+        toast.error(response.message || 'Registration failed');
+        return false;
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      toast.error('Registration failed. Please try again.');
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('psyduck_user');
+    localStorage.removeItem('psyduck_token');
+    
+    // Clear API service auth
+    apiService.setAuth(null, null);
+    
+    // Call API logout (fire and forget)
+    apiService.logout().catch(error => {
+      console.warn('Logout API call failed:', error);
+    });
+    
+    toast.success('Logged out successfully');
+  };
+
+  const updateUser = (updates: Partial<User>) => {
+    if (!user) return;
+    
+    const updatedUser = { ...user, ...updates };
+    setUser(updatedUser);
+    localStorage.setItem('psyduck_user', JSON.stringify(updatedUser));
+    
+    // Update API service with new user data
+    const token = localStorage.getItem('psyduck_token');
+    if (token) {
+      apiService.setAuth(token, updatedUser);
+    }
+  };
+
+  const updateProfile = async (updates: Partial<User>): Promise<boolean> => {
+    try {
+      updateUser(updates);
+      toast.success('Profile updated');
+      return true;
+    } catch (error) {
+      console.error('Update profile error:', error);
+      toast.error('Failed to update profile');
+      return false;
+    }
+  };
+
+  const upgradeToPremium = async (): Promise<boolean> => {
+    if (!user) return false;
+    
+    try {
+      // Simulate payment processing
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const updatedUser = {
+        ...user,
+        membership: 'premium' as const,
+        badges: [...user.badges.filter(b => b !== 'premium-member'), 'premium-member']
+      };
+      
+      setUser(updatedUser);
+      localStorage.setItem('psyduck_user', JSON.stringify(updatedUser));
+      
+      // Update API service
+      const token = localStorage.getItem('psyduck_token');
+      if (token) {
+        apiService.setAuth(token, updatedUser);
+      }
+      
+      toast.success('🎉 Welcome to Premium! You now have access to all features.');
+      return true;
+    } catch (error) {
+      console.error('Upgrade error:', error);
+      toast.error('Upgrade failed. Please try again.');
+      return false;
+    }
+  };
 
   const value: AuthContextType = {
-    ...state,
+    user,
+    isAuthenticated: !!user,
+    isLoading,
     login,
-    register,
     logout,
+    register,
+    updateUser,
     updateProfile,
-    forgotPassword,
-    resetPassword,
-    verifyEmail,
-    resendVerification,
-    clearError,
-    refreshAuth,
+    upgradeToPremium
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export default AuthProvider;

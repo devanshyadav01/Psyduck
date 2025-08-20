@@ -56,7 +56,71 @@ export interface SupportedLanguage {
 class CodeService {
   // Code execution
   async executeCode(submission: CodeSubmission): Promise<ExecutionResult> {
-    return apiService.post<ExecutionResult>('/code/execute', submission);
+    const resp: any = await apiService.post('/code/execute', submission);
+
+    // Handle standard ApiResponse shape
+    if (resp && typeof resp === 'object' && ('success' in resp || 'data' in resp)) {
+      const apiSuccess = Boolean((resp as any).success);
+      const apiMessage = (resp as any).message as string | undefined;
+      const payload = (resp as any).data;
+
+      // Error from server (e.g., unauthorized, validation, execution error)
+      if (!apiSuccess) {
+        return {
+          id: String(Date.now()),
+          success: false,
+          output: '',
+          executionTime: 0,
+          memoryUsage: 0,
+          status: 'error',
+          errorMessage: apiMessage || 'Code execution failed',
+        };
+      }
+
+      // If payload already conforms to ExecutionResult
+      if (payload && typeof payload === 'object' && 'id' in payload && 'output' in payload) {
+        const result = payload as ExecutionResult;
+        // Ensure required fields with fallbacks
+        return {
+          id: String(result.id || Date.now()),
+          success: Boolean(result.success),
+          output: String(result.output ?? ''),
+          executionTime: Number(result.executionTime ?? 0),
+          memoryUsage: Number(result.memoryUsage ?? 0),
+          status: (result.status as any) || (result.success ? 'completed' : 'error'),
+          errorMessage: result.errorMessage || undefined,
+          testResults: result.testResults,
+        };
+      }
+
+      // Normalize simple payloads { output, error, executionTime }
+      if (payload && typeof payload === 'object') {
+        const output = (payload as any).output ? String((payload as any).output) : '';
+        const errorMessage = (payload as any).error ? String((payload as any).error) : undefined;
+        const executionTime = Math.round(Number((payload as any).executionTime || 0));
+
+        return {
+          id: String(Date.now()),
+          success: !errorMessage,
+          output,
+          executionTime,
+          memoryUsage: Number((payload as any).memoryUsage || 0),
+          status: errorMessage ? 'error' : 'completed',
+          errorMessage,
+        };
+      }
+    }
+
+    // Fallback: unknown shape, surface a generic error rather than pretending success
+    return {
+      id: String(Date.now()),
+      success: false,
+      output: '',
+      executionTime: 0,
+      memoryUsage: 0,
+      status: 'error',
+      errorMessage: 'Unexpected response from server',
+    };
   }
 
   async getExecutionResult(executionId: string): Promise<ExecutionResult> {

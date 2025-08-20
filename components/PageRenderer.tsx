@@ -7,6 +7,8 @@ import { ActivityTracker } from "./ActivityTracker";
 import { Leaderboard } from "./Leaderboard";
 import { Search } from "./Search";
 import { Profile } from "./Profile";
+import { RecruitingForm } from "./RecruitingForm";
+import { ContentCreator } from "./ContentCreator";
 import { Notifications } from "./Notifications";
 import { Settings } from "./Settings";
 import { IDE } from "./IDE";
@@ -100,6 +102,20 @@ export function PageRenderer({
         return (
           <AuthenticatedPageWrapper shouldRedirectToAuth={shouldRedirectToAuth}>
             <Profile />
+          </AuthenticatedPageWrapper>
+        );
+
+      case "recruiting-form":
+        return (
+          <AuthenticatedPageWrapper shouldRedirectToAuth={shouldRedirectToAuth}>
+            <RecruitingForm />
+          </AuthenticatedPageWrapper>
+        );
+
+      case "content-creator":
+        return (
+          <AuthenticatedPageWrapper shouldRedirectToAuth={shouldRedirectToAuth}>
+            <ContentCreator />
           </AuthenticatedPageWrapper>
         );
 

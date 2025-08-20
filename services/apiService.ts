@@ -1,244 +1,192 @@
-import { config } from '../config/environment';
-import { mockApiService } from './mockApiService';
+// Legacy API Service - Backwards compatibility layer
+// This file provides backwards compatibility for existing components
+// while routing calls to the new service architecture
 
-interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  meta?: {
-    timestamp: string;
-    request_id: string;
-    pagination?: {
-      page: number;
-      per_page: number;
-      total: number;
-      total_pages: number;
-    };
-  };
-}
+import { serviceManager } from './frontend/ServiceManager';
+import { apiClient } from './api/ApiClient';
+import { User } from '../contexts/AuthContext';
 
-interface ApiError {
-  success: false;
-  error: {
-    code: string;
-    message: string;
-    details?: Array<{
-      field: string;
-      message: string;
-    }>;
-  };
-  meta: {
-    timestamp: string;
-    request_id: string;
-  };
-}
+// Initialize service manager
+let isInitialized = false;
 
+const ensureInitialized = async () => {
+  if (!isInitialized) {
+    await serviceManager.initialize();
+    isInitialized = true;
+  }
+};
+
+// Main API Service that routes to new architecture
 class ApiService {
-  private baseURL: string;
-  private token: string | null;
-  private useMockApi: boolean = false;
-
+  private useMockApi: boolean = true; // Always use mock API in this environment
+  private baseUrl: string = 'https://api.psyduck.dev/v1';
+  
   constructor() {
-    this.baseURL = config.api.baseUrl;
-    this.token = localStorage.getItem('psyduck_token');
-    this.useMockApi = config.app.environment === 'development';
+    // Remove process.env dependency
+    this.useMockApi = true;
   }
 
-  private async checkApiAvailability(): Promise<boolean> {
-    try {
-      const response = await fetch(`${this.baseURL}/health`, {
-        method: 'GET',
-        timeout: 3000,
-      } as any);
-      return response.ok;
-    } catch (error) {
-      console.warn('Real API not available, falling back to mock API');
-      return false;
-    }
+  // Set authentication for the service
+  async setAuth(token: string | null, user: User | null) {
+    await ensureInitialized();
+    serviceManager.setAuth(token, user);
   }
 
-  private async request<T>(
-    endpoint: string, 
-    options: RequestInit = {}
-  ): Promise<T> {
-    // Check if we should use mock API
-    if (this.useMockApi || !(await this.checkApiAvailability())) {
-      return this.handleMockRequest<T>(endpoint, options);
-    }
+  // Generic HTTP methods for backward compatibility
+  async get(endpoint: string, options: any = {}) {
+    await ensureInitialized();
+    return apiClient.get(endpoint, options);
+  }
 
-    const url = `${this.baseURL}${endpoint}`;
+  async post(endpoint: string, data: any = {}, options: any = {}) {
+    await ensureInitialized();
+    return apiClient.post(endpoint, data, options);
+  }
+
+  async put(endpoint: string, data: any = {}, options: any = {}) {
+    await ensureInitialized();
+    return apiClient.put(endpoint, data, options);
+  }
+
+  async delete(endpoint: string, options: any = {}) {
+    await ensureInitialized();
+    return apiClient.delete(endpoint, options);
+  }
+
+  // Authentication endpoints
+  async login(email: string, password: string) {
+    await ensureInitialized();
+    const authService = serviceManager.getService('auth');
+    return authService?.login(email, password) || this.post('/auth/login', { email, password });
+  }
+
+  async register(email: string, password: string, username: string) {
+    await ensureInitialized();
+    const authService = serviceManager.getService('auth');
+    return authService?.register({ email, password, username }) || this.post('/auth/register', { email, password, username });
+  }
+
+  async logout() {
+    await ensureInitialized();
+    const authService = serviceManager.getService('auth');
+    return authService?.logout() || this.post('/auth/logout');
+  }
+
+  // User profile endpoints
+  async getUserProfile() {
+    await ensureInitialized();
+    const authService = serviceManager.getService('auth');
+    return authService?.getUserProfile() || this.get('/user/profile');
+  }
+
+  async updateUserProfile(updates: Partial<User>) {
+    await ensureInitialized();
+    const authService = serviceManager.getService('auth');
+    return authService?.updateUserProfile(updates) || this.put('/user/profile', updates);
+  }
+
+  // Projects endpoints
+  async getEnrolledProjects() {
+    await ensureInitialized();
+    const projectService = serviceManager.getService('projects');
+    return projectService?.getEnrolledProjects() || this.get('/projects/enrolled');
+  }
+
+  async getAvailableProjects() {
+    await ensureInitialized();
+    const projectService = serviceManager.getService('projects');
+    return projectService?.getAvailableProjects() || this.get('/projects');
+  }
+
+  async enrollInProject(projectId: string) {
+    await ensureInitialized();
+    const projectService = serviceManager.getService('projects');
+    return projectService?.enrollInProject(projectId) || this.post('/projects/enroll', { projectId });
+  }
+
+  // Gamification endpoints
+  async getUserStats() {
+    await ensureInitialized();
+    const gamificationService = serviceManager.getService('gamification');
+    return gamificationService?.getUserStats() || this.get('/user/stats');
+  }
+
+  async getLeaderboard(timeframe?: 'weekly' | 'monthly' | 'all-time') {
+    await ensureInitialized();
+    const gamificationService = serviceManager.getService('gamification');
+    return gamificationService?.getLeaderboard(timeframe) || this.get('/gamification/leaderboard', { params: { timeframe } });
+  }
+
+  // Notifications endpoints
+  async getNotifications() {
+    await ensureInitialized();
+    const notificationService = serviceManager.getService('notifications');
+    return notificationService?.getNotifications() || this.get('/notifications');
+  }
+
+  async markNotificationAsRead(notificationId: string) {
+    await ensureInitialized();
+    const notificationService = serviceManager.getService('notifications');
+    return notificationService?.markAsRead(notificationId) || this.post('/notifications/mark-read', { notificationId });
+  }
+
+  // Search endpoints
+  async searchProjects(query: string, filters?: any) {
+    await ensureInitialized();
+    const projectService = serviceManager.getService('projects');
+    return projectService?.searchProjects(query, filters) || this.get('/search/projects', { params: { q: query, ...filters } });
+  }
+
+  // Analytics endpoints
+  async getUserAnalytics() {
+    await ensureInitialized();
+    return this.get('/user/analytics');
+  }
+
+  // Code execution
+  async executeCode(code: string, language: string, input?: string) {
+    await ensureInitialized();
+    const codeService = serviceManager.getService('code');
+    return codeService?.executeCode({ code, language, input }) || this.post('/code/execute', { code, language, input });
+  }
+
+  // Utility methods for common patterns
+  async request(method: 'GET' | 'POST' | 'PUT' | 'DELETE', endpoint: string, data?: any, options?: any) {
+    await ensureInitialized();
     
-    const requestConfig: RequestInit = {
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Client-Version': '1.0.0',
-        ...(this.token && { Authorization: `Bearer ${this.token}` }),
-        ...options.headers,
-      },
-      ...options,
-    };
-
-    try {
-      const response = await fetch(url, requestConfig);
-      const data = await response.json();
-      
-      if (!response.ok) {
-        const error = data as ApiError;
-        throw new Error(error.error?.message || `HTTP ${response.status}`);
-      }
-
-      const apiResponse = data as ApiResponse<T>;
-      return apiResponse.data;
-    } catch (error) {
-      console.error('API Request failed:', {
-        url,
-        error: error instanceof Error ? error.message : error,
-        options: requestConfig
-      });
-      
-      // Handle network errors by falling back to mock
-      if (error instanceof TypeError && error.message === 'Failed to fetch') {
-        console.warn('Network error detected, falling back to mock API');
-        return this.handleMockRequest<T>(endpoint, options);
-      }
-      
-      throw error;
+    switch (method.toUpperCase()) {
+      case 'GET':
+        return this.get(endpoint, options);
+      case 'POST':
+        return this.post(endpoint, data, options);
+      case 'PUT':
+        return this.put(endpoint, data, options);
+      case 'DELETE':
+        return this.delete(endpoint, options);
+      default:
+        throw new Error(`Unsupported HTTP method: ${method}`);
     }
   }
 
-  private async handleMockRequest<T>(endpoint: string, options: RequestInit): Promise<T> {
-    const method = options.method || 'GET';
-    const body = options.body ? JSON.parse(options.body as string) : null;
-
-    console.log(`🎭 Mock API: ${method} ${endpoint}`, body || '');
-
-    try {
-      // Route to appropriate mock service method
-      switch (true) {
-        // Auth endpoints
-        case endpoint === '/auth/login' && method === 'POST':
-          return await mockApiService.login(body) as T;
-        
-        case endpoint === '/auth/register' && method === 'POST':
-          return await mockApiService.register(body) as T;
-        
-        case endpoint === '/auth/me' && method === 'GET':
-          return await mockApiService.getCurrentUser() as T;
-        
-        case endpoint === '/users/me' && method === 'PUT':
-          return await mockApiService.updateProfile(body) as T;
-
-        // Project endpoints
-        case endpoint === '/projects' && method === 'GET':
-          return await mockApiService.getProjects() as T;
-        
-        case endpoint.startsWith('/projects/') && !endpoint.includes('/enroll') && method === 'GET':
-          const projectId = endpoint.split('/')[2];
-          return await mockApiService.getProjectById(projectId) as T;
-        
-        case endpoint === '/users/me/projects' && method === 'GET':
-          return await mockApiService.getUserProjects() as T;
-        
-        case endpoint.includes('/enroll') && method === 'POST':
-          const enrollProjectId = endpoint.split('/')[2];
-          return await mockApiService.enrollProject(enrollProjectId) as T;
-
-        // Code execution endpoints
-        case endpoint === '/code/execute' && method === 'POST':
-          return await mockApiService.executeCode(body) as T;
-
-        // Gamification endpoints
-        case endpoint === '/users/me/xp' && method === 'GET':
-          return await mockApiService.getXPSummary() as T;
-        
-        case endpoint === '/users/me/streak' && method === 'GET':
-          return await mockApiService.getStreakData() as T;
-        
-        case endpoint === '/users/me/badges' && method === 'GET':
-          return await mockApiService.getUserBadges() as T;
-        
-        case endpoint === '/users/me/daily-checkin' && method === 'POST':
-          return await mockApiService.recordDailyCheckin() as T;
-        
-        case endpoint === '/leaderboard' && method === 'GET':
-          return await mockApiService.getLeaderboard() as T;
-
-        // Default fallback
-        default:
-          console.warn(`Mock API: Unhandled endpoint ${method} ${endpoint}`);
-          // Return empty response for unhandled endpoints
-          return {} as T;
-      }
-    } catch (error) {
-      console.error('Mock API Error:', error);
-      throw error;
-    }
+  // Health check for the API
+  async healthCheck() {
+    await ensureInitialized();
+    return apiClient.healthCheck();
   }
 
-  async get<T>(endpoint: string, params?: Record<string, string>): Promise<T> {
-    const searchParams = params ? new URLSearchParams(params) : '';
-    const url = searchParams ? `${endpoint}?${searchParams}` : endpoint;
-    return this.request<T>(url);
+  // Get service manager for advanced usage
+  getServiceManager() {
+    return serviceManager;
   }
 
-  async post<T>(endpoint: string, data?: any): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
-    });
-  }
-
-  async put<T>(endpoint: string, data?: any): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
-    });
-  }
-
-  async delete<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'DELETE',
-    });
-  }
-
-  async upload<T>(endpoint: string, file: File, additionalData?: Record<string, string>): Promise<T> {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    if (additionalData) {
-      Object.entries(additionalData).forEach(([key, value]) => {
-        formData.append(key, value);
-      });
-    }
-
-    return this.request<T>(endpoint, {
-      method: 'POST',
-      body: formData,
-      headers: {
-        // Don't set Content-Type for FormData, let browser set it
-        ...(this.token && { Authorization: `Bearer ${this.token}` }),
-      },
-    });
-  }
-
-  setToken(token: string) {
-    this.token = token;
-    localStorage.setItem('psyduck_token', token);
-  }
-
-  clearToken() {
-    this.token = null;
-    localStorage.removeItem('psyduck_token');
-  }
-
-  getToken(): string | null {
-    return this.token;
-  }
-
-  // Method to force mock API usage (useful for testing)
-  setMockMode(useMock: boolean) {
-    this.useMockApi = useMock;
-    console.log(`API Service: ${useMock ? 'Mock' : 'Real'} API mode enabled`);
+  // Get API client for direct access
+  getApiClient() {
+    return apiClient;
   }
 }
 
+// Create singleton instance
 export const apiService = new ApiService();
+
+// Export for use in components and contexts
+export default apiService;

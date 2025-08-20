@@ -39,8 +39,8 @@ interface Config {
 // Default configuration
 const defaultConfig: Config = {
   api: {
-    baseUrl: 'http://localhost:8000/api',
-    wsUrl: 'ws://localhost:8000',
+    baseUrl: 'http://localhost:3001',
+    wsUrl: 'ws://localhost:3001',
     timeout: 10000,
     useMockApi: true,
   },
@@ -51,7 +51,7 @@ const defaultConfig: Config = {
   },
   features: {
     devTools: true,
-    realTime: true,
+    realTime: false, // Disabled by default when using mock API
     analytics: false,
     codeExecution: true,
     socialAuth: false,
@@ -63,15 +63,19 @@ const defaultConfig: Config = {
     allowedTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
   },
   monaco: {
-    cdnUrl: 'https://unpkg.com/monaco-editor@latest/min/vs',
+    // FIXED: Use a more reliable CDN with better NLS support
+    cdnUrl: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs',
   },
 };
 
 // Safely get environment variable
 function getEnvVar(key: string, fallback: string = ''): string {
   try {
-    if (typeof import.meta !== 'undefined' && import.meta.env) {
-      return import.meta.env[key] || fallback;
+    // Vite-style env access guarded to avoid TS errors in non-Vite contexts
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const meta: any = (typeof import.meta !== 'undefined') ? (import.meta as any) : undefined;
+    if (meta && meta.env && typeof meta.env === 'object') {
+      return meta.env[key] || fallback;
     }
     // Fallback for environments where import.meta.env is not available
     if (typeof process !== 'undefined' && process.env) {
@@ -88,13 +92,18 @@ function getEnvVar(key: string, fallback: string = ''): string {
 function loadConfig(): Config {
   const environment = getEnvVar('VITE_ENVIRONMENT', defaultConfig.app.environment) as any;
   const isDev = environment === 'development';
+  const useMockApi = getEnvVar('VITE_USE_MOCK_API', isDev ? 'true' : 'false') === 'true';
+  const mockApiFeature = getEnvVar('VITE_ENABLE_MOCK_API', isDev ? 'true' : 'false') === 'true';
+  
+  // If using mock API, disable real-time by default unless explicitly enabled
+  const realTimeDefault = (useMockApi || mockApiFeature) ? 'false' : 'true';
 
   return {
     api: {
       baseUrl: getEnvVar('VITE_API_URL', defaultConfig.api.baseUrl),
       wsUrl: getEnvVar('VITE_WS_URL', defaultConfig.api.wsUrl),
       timeout: parseInt(getEnvVar('VITE_API_TIMEOUT', '10000')),
-      useMockApi: getEnvVar('VITE_USE_MOCK_API', isDev ? 'true' : 'false') === 'true',
+      useMockApi,
     },
     app: {
       environment,
@@ -103,11 +112,11 @@ function loadConfig(): Config {
     },
     features: {
       devTools: getEnvVar('VITE_ENABLE_DEV_TOOLS', isDev ? 'true' : 'false') === 'true',
-      realTime: getEnvVar('VITE_ENABLE_REAL_TIME', 'true') !== 'false',
+      realTime: getEnvVar('VITE_ENABLE_REAL_TIME', realTimeDefault) === 'true',
       analytics: getEnvVar('VITE_ENABLE_ANALYTICS', 'false') === 'true',
       codeExecution: getEnvVar('VITE_ENABLE_CODE_EXECUTION', 'true') !== 'false',
       socialAuth: getEnvVar('VITE_ENABLE_SOCIAL_AUTH', 'false') === 'true',
-      mockApi: getEnvVar('VITE_ENABLE_MOCK_API', isDev ? 'true' : 'false') === 'true',
+      mockApi: mockApiFeature,
     },
     external: {
       ...(getEnvVar('VITE_SENTRY_DSN') && {
@@ -127,6 +136,7 @@ function loadConfig(): Config {
       allowedTypes: getEnvVar('VITE_ALLOWED_FILE_TYPES', defaultConfig.upload.allowedTypes.join(',')).split(','),
     },
     monaco: {
+      // FIXED: Allow environment override but keep the reliable default
       cdnUrl: getEnvVar('VITE_MONACO_CDN', defaultConfig.monaco.cdnUrl),
     },
   };
@@ -154,6 +164,17 @@ export function validateConfig(): void {
 
   if (config.api.useMockApi || config.features.mockApi) {
     console.info('🎭 Mock API is enabled - using simulated backend responses');
+    
+    if (config.features.realTime) {
+      warnings.push('Real-time features are enabled but will be ignored in mock mode');
+    }
+  }
+
+  // FIXED: Validate Monaco CDN configuration
+  if (!config.monaco.cdnUrl) {
+    warnings.push('Monaco Editor CDN URL not configured, using default');
+  } else {
+    console.info('🎨 Monaco Editor CDN:', config.monaco.cdnUrl);
   }
 
   if (warnings.length > 0) {

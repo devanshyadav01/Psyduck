@@ -6,6 +6,7 @@ import { gamificationService, XPTransaction, UserBadge, LeaderboardResponse, Str
 import { authService, User, UserProfile } from '../services/authService';
 import { useUI } from '../contexts/UIContext';
 import { socketService } from '../services/socketService';
+import { config, isDevelopment } from '../config/environment';
 import { toast } from 'sonner';
 
 // Project-related hooks
@@ -291,46 +292,77 @@ export function useLoadingStates() {
   };
 }
 
-// Real-time data synchronization hook
+// Real-time data synchronization hook - only works when NOT in mock mode
 export function useRealTimeSync() {
   const queryClient = useQueryClient();
+  const isRealTimeEnabled = config.features.realTime && !config.api.useMockApi && !config.features.mockApi;
 
   // XP updates
   React.useEffect(() => {
-    if (!socketService.isConnected()) return;
+    if (!isRealTimeEnabled) {
+      console.log('🔌 Real-time sync disabled - running in mock mode');
+      return;
+    }
 
-    const unsubscribe = socketService.subscribeToXPUpdates((data) => {
-      // Update XP-related queries
-      queryClient.invalidateQueries({ queryKey: ['xp-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['xp-history'] });
-      queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
-    });
+    if (!socketService.isConnected()) {
+      console.log('🔌 Socket not connected, skipping XP sync setup');
+      return;
+    }
 
-    return unsubscribe;
-  }, [queryClient]);
+    try {
+      const unsubscribe = socketService.subscribeToXPUpdates((data) => {
+        // Update XP-related queries
+        queryClient.invalidateQueries({ queryKey: ['xp-summary'] });
+        queryClient.invalidateQueries({ queryKey: ['xp-history'] });
+        queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
+      });
+
+      return unsubscribe;
+    } catch (error) {
+      console.warn('🔌 Failed to setup XP updates subscription:', error);
+    }
+  }, [queryClient, isRealTimeEnabled]);
 
   // Progress updates
   React.useEffect(() => {
-    if (!socketService.isConnected()) return;
+    if (!isRealTimeEnabled) return;
 
-    const unsubscribe = socketService.subscribeToProgressUpdates((data) => {
-      // Update project progress queries
-      queryClient.invalidateQueries({ queryKey: ['user-project', data.projectId] });
-      queryClient.invalidateQueries({ queryKey: ['user-projects'] });
-    });
+    if (!socketService.isConnected()) {
+      console.log('🔌 Socket not connected, skipping progress sync setup');
+      return;
+    }
 
-    return unsubscribe;
-  }, [queryClient]);
+    try {
+      const unsubscribe = socketService.subscribeToProgressUpdates((data) => {
+        // Update project progress queries
+        queryClient.invalidateQueries({ queryKey: ['user-project', data.projectId] });
+        queryClient.invalidateQueries({ queryKey: ['user-projects'] });
+      });
+
+      return unsubscribe;
+    } catch (error) {
+      console.warn('🔌 Failed to setup progress updates subscription:', error);
+    }
+  }, [queryClient, isRealTimeEnabled]);
 
   // Badge updates
   React.useEffect(() => {
-    if (!socketService.isConnected()) return;
+    if (!isRealTimeEnabled) return;
 
-    const unsubscribe = socketService.subscribeToBadgeUpdates((data) => {
-      // Update badge-related queries
-      queryClient.invalidateQueries({ queryKey: ['user-badges'] });
-    });
+    if (!socketService.isConnected()) {
+      console.log('🔌 Socket not connected, skipping badge sync setup');
+      return;
+    }
 
-    return unsubscribe;
-  }, [queryClient]);
+    try {
+      const unsubscribe = socketService.subscribeToBadgeUpdates((data) => {
+        // Update badge-related queries
+        queryClient.invalidateQueries({ queryKey: ['user-badges'] });
+      });
+
+      return unsubscribe;
+    } catch (error) {
+      console.warn('🔌 Failed to setup badge updates subscription:', error);
+    }
+  }, [queryClient, isRealTimeEnabled]);
 }

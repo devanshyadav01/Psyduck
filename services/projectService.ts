@@ -208,6 +208,41 @@ class ProjectService {
   }> {
     return apiService.get(`/projects/${projectId}/stats`);
   }
+
+  // Convenience method to get enrolled projects with full project details
+  async getEnrolledProjects(): Promise<Project[]> {
+    try {
+      // Try to use the dedicated endpoint first
+      return await apiService.get<Project[]>('/users/me/projects/enrolled');
+    } catch (error) {
+      console.warn('Enrolled projects endpoint not available, falling back to manual method');
+      
+      // Fallback to the manual method
+      const userProjects = await this.getUserProjects();
+      const projectIds = userProjects.map(up => up.projectId);
+      
+      if (projectIds.length === 0) {
+        return [];
+      }
+      
+      // Fetch full project details for enrolled projects
+      const projects = await Promise.all(
+        projectIds.map(id => this.getProjectById(id).catch(() => null))
+      );
+      
+      // Filter out any failed requests and add user progress
+      return projects
+        .filter((project): project is Project => project !== null)
+        .map(project => {
+          const userProgress = userProjects.find(up => up.projectId === project.id);
+          return {
+            ...project,
+            isEnrolled: true,
+            userProgress
+          };
+        });
+    }
+  }
 }
 
 export const projectService = new ProjectService();

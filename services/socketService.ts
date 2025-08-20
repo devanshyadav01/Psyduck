@@ -65,16 +65,32 @@ class SocketService {
   private token: string | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
+  private connectionEnabled = false;
 
   connect(token: string) {
-    if (!config.features.realTime) {
-      console.log('Real-time features are disabled');
+    // Don't attempt connection if real-time is disabled or we're in mock mode
+    const shouldConnect = config.features.realTime && 
+                         !config.api.useMockApi && 
+                         !config.features.mockApi && 
+                         config.api.wsUrl;
+
+    if (!shouldConnect) {
+      console.log('🔌 Real-time features disabled - Socket connection skipped');
+      console.log('🔌 Mode:', {
+        realTime: config.features.realTime,
+        useMockApi: config.api.useMockApi,
+        mockApiFeature: config.features.mockApi,
+        hasWsUrl: !!config.api.wsUrl
+      });
       return;
     }
 
+    this.connectionEnabled = false;
     this.token = token;
     
     try {
+      console.log('🔌 Attempting to connect to WebSocket at:', config.api.wsUrl);
+      
       this.socket = io(config.api.wsUrl, {
         auth: { token },
         transports: ['websocket'],
@@ -83,23 +99,28 @@ class SocketService {
         reconnectionAttempts: this.maxReconnectAttempts,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000,
+        timeout: 5000, // 5 second connection timeout
       });
 
       this.setupEventListeners();
+      this.connectionEnabled = true;
     } catch (error) {
-      console.error('Failed to connect to WebSocket:', error);
+      console.warn('🔌 Failed to initialize WebSocket connection:', error);
+      this.connectionEnabled = false;
     }
   }
 
   disconnect() {
     if (this.socket) {
+      console.log('🔌 Disconnecting from WebSocket');
       this.socket.disconnect();
       this.socket = null;
     }
+    this.connectionEnabled = false;
   }
 
   isConnected(): boolean {
-    return this.socket?.connected ?? false;
+    return this.connectionEnabled && this.socket?.connected === true;
   }
 
   private setupEventListeners() {
@@ -125,82 +146,96 @@ class SocketService {
     });
 
     this.socket.on('connect_error', (error) => {
-      console.error('🔌 Connection error:', error.message);
+      console.warn('🔌 Connection error (this is expected in mock mode):', error.message);
+      
+      // Don't show error toast in mock mode
+      if (!config.api.useMockApi && !config.features.mockApi) {
+        console.error('🔌 WebSocket connection failed:', error.message);
+      }
     });
   }
 
   // Progress tracking
   subscribeToProgressUpdates(callback: (data: ProgressUpdate) => void): () => void {
-    if (!this.socket) {
-      console.warn('Socket not connected, cannot subscribe to progress updates');
+    if (!this.isConnected()) {
+      console.log('🔌 Socket not connected, progress updates disabled');
       return () => {};
     }
     
-    this.socket.on('progress:updated', callback);
+    this.socket!.on('progress:updated', callback);
     return () => this.socket?.off('progress:updated', callback);
   }
 
   emitProgressUpdate(data: Omit<ProgressUpdate, 'timestamp'>): void {
-    if (!this.socket) return;
-    this.socket.emit('progress:update', { ...data, timestamp: new Date().toISOString() });
+    if (!this.isConnected()) {
+      console.log('🔌 Socket not connected, cannot emit progress update');
+      return;
+    }
+    this.socket!.emit('progress:update', { ...data, timestamp: new Date().toISOString() });
   }
 
   // XP and gamification
   subscribeToXPUpdates(callback: (data: XPUpdate) => void): () => void {
-    if (!this.socket) {
-      console.warn('Socket not connected, cannot subscribe to XP updates');
+    if (!this.isConnected()) {
+      console.log('🔌 Socket not connected, XP updates disabled');
       return () => {};
     }
     
-    this.socket.on('xp:updated', callback);
+    this.socket!.on('xp:updated', callback);
     return () => this.socket?.off('xp:updated', callback);
   }
 
   subscribeToBadgeUpdates(callback: (data: BadgeUpdate) => void): () => void {
-    if (!this.socket) {
-      console.warn('Socket not connected, cannot subscribe to badge updates');
+    if (!this.isConnected()) {
+      console.log('🔌 Socket not connected, badge updates disabled');
       return () => {};
     }
     
-    this.socket.on('badge:awarded', callback);
+    this.socket!.on('badge:awarded', callback);
     return () => this.socket?.off('badge:awarded', callback);
   }
 
   // Notifications
   subscribeToNotifications(callback: (data: NotificationData) => void): () => void {
-    if (!this.socket) {
-      console.warn('Socket not connected, cannot subscribe to notifications');
+    if (!this.isConnected()) {
+      console.log('🔌 Socket not connected, notifications disabled');
       return () => {};
     }
     
-    this.socket.on('notification:new', callback);
+    this.socket!.on('notification:new', callback);
     return () => this.socket?.off('notification:new', callback);
   }
 
   // Chat system
   joinProjectChat(projectId: string): void {
-    if (!this.socket) return;
-    this.socket.emit('chat:join_project', { projectId });
+    if (!this.isConnected()) {
+      console.log('🔌 Socket not connected, cannot join project chat');
+      return;
+    }
+    this.socket!.emit('chat:join_project', { projectId });
   }
 
   leaveProjectChat(projectId: string): void {
-    if (!this.socket) return;
-    this.socket.emit('chat:leave_project', { projectId });
+    if (!this.isConnected()) return;
+    this.socket!.emit('chat:leave_project', { projectId });
   }
 
   subscribeToProjectChat(callback: (data: ChatMessage) => void): () => void {
-    if (!this.socket) {
-      console.warn('Socket not connected, cannot subscribe to project chat');
+    if (!this.isConnected()) {
+      console.log('🔌 Socket not connected, project chat disabled');
       return () => {};
     }
     
-    this.socket.on('chat:new_message', callback);
+    this.socket!.on('chat:new_message', callback);
     return () => this.socket?.off('chat:new_message', callback);
   }
 
   sendChatMessage(projectId: string, message: string, type: 'text' | 'code' = 'text'): void {
-    if (!this.socket) return;
-    this.socket.emit('chat:send_message', {
+    if (!this.isConnected()) {
+      console.log('🔌 Socket not connected, cannot send chat message');
+      return;
+    }
+    this.socket!.emit('chat:send_message', {
       projectId,
       message,
       type,
@@ -210,28 +245,31 @@ class SocketService {
 
   // Code collaboration
   joinCodeSession(projectId: string, milestoneId: string): void {
-    if (!this.socket) return;
-    this.socket.emit('code:join_session', { projectId, milestoneId });
+    if (!this.isConnected()) {
+      console.log('🔌 Socket not connected, cannot join code session');
+      return;
+    }
+    this.socket!.emit('code:join_session', { projectId, milestoneId });
   }
 
   leaveCodeSession(projectId: string, milestoneId: string): void {
-    if (!this.socket) return;
-    this.socket.emit('code:leave_session', { projectId, milestoneId });
+    if (!this.isConnected()) return;
+    this.socket!.emit('code:leave_session', { projectId, milestoneId });
   }
 
   subscribeToCodeCollaboration(callback: (data: CodeCollaborationData) => void): () => void {
-    if (!this.socket) {
-      console.warn('Socket not connected, cannot subscribe to code collaboration');
+    if (!this.isConnected()) {
+      console.log('🔌 Socket not connected, code collaboration disabled');
       return () => {};
     }
     
-    this.socket.on('code:updated', callback);
+    this.socket!.on('code:updated', callback);
     return () => this.socket?.off('code:updated', callback);
   }
 
   emitCodeUpdate(data: Omit<CodeCollaborationData, 'timestamp'>): void {
-    if (!this.socket) return;
-    this.socket.emit('code:update', { ...data, timestamp: new Date().toISOString() });
+    if (!this.isConnected()) return;
+    this.socket!.emit('code:update', { ...data, timestamp: new Date().toISOString() });
   }
 
   // Typing indicators
@@ -241,29 +279,32 @@ class SocketService {
     isTyping: boolean;
     location: 'chat' | 'code';
   }) => void): () => void {
-    if (!this.socket) {
-      console.warn('Socket not connected, cannot subscribe to typing indicators');
+    if (!this.isConnected()) {
+      console.log('🔌 Socket not connected, typing indicators disabled');
       return () => {};
     }
     
-    this.socket.on('typing:indicator', callback);
+    this.socket!.on('typing:indicator', callback);
     return () => this.socket?.off('typing:indicator', callback);
   }
 
   emitTyping(location: 'chat' | 'code', isTyping: boolean): void {
-    if (!this.socket) return;
-    this.socket.emit('typing:start_stop', { location, isTyping });
+    if (!this.isConnected()) return;
+    this.socket!.emit('typing:start_stop', { location, isTyping });
   }
 
   // Mentorship sessions
   joinMentorshipSession(sessionId: string): void {
-    if (!this.socket) return;
-    this.socket.emit('mentorship:join_session', { sessionId });
+    if (!this.isConnected()) {
+      console.log('🔌 Socket not connected, cannot join mentorship session');
+      return;
+    }
+    this.socket!.emit('mentorship:join_session', { sessionId });
   }
 
   leaveMentorshipSession(sessionId: string): void {
-    if (!this.socket) return;
-    this.socket.emit('mentorship:leave_session', { sessionId });
+    if (!this.isConnected()) return;
+    this.socket!.emit('mentorship:leave_session', { sessionId });
   }
 
   subscribeToMentorshipUpdates(callback: (data: {
@@ -272,12 +313,12 @@ class SocketService {
     userId?: string;
     username?: string;
   }) => void): () => void {
-    if (!this.socket) {
-      console.warn('Socket not connected, cannot subscribe to mentorship updates');
+    if (!this.isConnected()) {
+      console.log('🔌 Socket not connected, mentorship updates disabled');
       return () => {};
     }
     
-    this.socket.on('mentorship:update', callback);
+    this.socket!.on('mentorship:update', callback);
     return () => this.socket?.off('mentorship:update', callback);
   }
 
@@ -292,12 +333,12 @@ class SocketService {
       change: number;
     }>;
   }) => void): () => void {
-    if (!this.socket) {
-      console.warn('Socket not connected, cannot subscribe to leaderboard updates');
+    if (!this.isConnected()) {
+      console.log('🔌 Socket not connected, leaderboard updates disabled');
       return () => {};
     }
     
-    this.socket.on('leaderboard:updated', callback);
+    this.socket!.on('leaderboard:updated', callback);
     return () => this.socket?.off('leaderboard:updated', callback);
   }
 }

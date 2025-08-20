@@ -7,6 +7,8 @@ export type PageKey =
   | 'leaderboard'
   | 'search'
   | 'profile'
+  | 'recruiting-form'
+  | 'content-creator'
   | 'notifications'
   | 'settings'
   | 'ide';

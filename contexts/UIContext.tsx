@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { socketService, NotificationData } from '../services/socketService';
 import { toast } from 'sonner';
 
@@ -74,48 +74,64 @@ export function UIProvider({ children }: UIProviderProps) {
     return initialState;
   });
 
+  // Memoized preferences for localStorage
+  const preferences = useMemo(() => ({
+    theme: state.theme,
+    sidebarCollapsed: state.sidebarCollapsed,
+  }), [state.theme, state.sidebarCollapsed]);
+
   // Save preferences to localStorage when they change
   useEffect(() => {
-    const preferences = {
-      theme: state.theme,
-      sidebarCollapsed: state.sidebarCollapsed,
-    };
     localStorage.setItem('psyduck_ui_preferences', JSON.stringify(preferences));
-  }, [state.theme, state.sidebarCollapsed]);
+  }, [preferences]);
 
-  // Apply theme changes to document
+  // Apply theme changes to document with improved system theme detection
   useEffect(() => {
-    const root = document.documentElement;
-    const theme = state.theme === 'system' 
-      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-      : state.theme;
-    
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
+    const applyTheme = () => {
+      const root = document.documentElement;
+      let appliedTheme = state.theme;
+
+      // Handle system theme
+      if (state.theme === 'system') {
+        appliedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      
+      // Apply theme classes
+      root.classList.remove('light', 'dark');
+      root.classList.add(appliedTheme);
+      
+      // Set data attribute for CSS targeting
+      root.setAttribute('data-theme', appliedTheme);
+      
+      // Update meta theme-color for mobile browsers
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+      if (metaThemeColor) {
+        metaThemeColor.setAttribute('content', 
+          appliedTheme === 'dark' ? '#212121' : '#ffffff'
+        );
+      }
+    };
+
+    applyTheme();
   }, [state.theme]);
 
-  // Listen for system theme changes
+  // Listen for system theme changes with better cleanup
   useEffect(() => {
     if (state.theme !== 'system') return;
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = () => {
+    const handleChange = (e: MediaQueryListEvent) => {
       const root = document.documentElement;
-      if (mediaQuery.matches) {
-        root.classList.add('dark');
-      } else {
-        root.classList.remove('dark');
-      }
+      root.classList.remove('light', 'dark');
+      root.classList.add(e.matches ? 'dark' : 'light');
+      root.setAttribute('data-theme', e.matches ? 'dark' : 'light');
     };
 
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, [state.theme]);
 
-  // Monitor online/offline status
+  // Optimized online/offline status monitoring
   useEffect(() => {
     const handleOnline = () => {
       setState(prev => ({ ...prev, isOnline: true }));
@@ -136,7 +152,7 @@ export function UIProvider({ children }: UIProviderProps) {
     };
   }, []);
 
-  // Setup real-time notification listener
+  // Setup real-time notification listener with better error handling
   useEffect(() => {
     if (!socketService.isConnected()) return;
 
@@ -152,12 +168,18 @@ export function UIProvider({ children }: UIProviderProps) {
         unreadCount: prev.unreadCount + 1,
       }));
 
-      // Show toast notification
+      // Show toast notification with better action handling
       const toastOptions = {
         description: data.message,
         action: data.actionUrl ? {
           label: 'View',
-          onClick: () => window.location.href = data.actionUrl!,
+          onClick: () => {
+            try {
+              window.location.href = data.actionUrl!;
+            } catch (error) {
+              console.error('Failed to navigate to action URL:', error);
+            }
+          },
         } : undefined,
       };
 
@@ -179,9 +201,16 @@ export function UIProvider({ children }: UIProviderProps) {
     return unsubscribe;
   }, []);
 
-  // Keyboard shortcuts
+  // Optimized keyboard shortcuts with better event handling
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Prevent shortcuts when typing in input fields
+      if (event.target instanceof HTMLInputElement || 
+          event.target instanceof HTMLTextAreaElement ||
+          (event.target as HTMLElement)?.isContentEditable) {
+        return;
+      }
+
       // Cmd/Ctrl + K for command palette
       if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
         event.preventDefault();
@@ -196,42 +225,42 @@ export function UIProvider({ children }: UIProviderProps) {
 
       // Escape to close modals
       if (event.key === 'Escape') {
-        if (state.searchOpen) {
-          setState(prev => ({ ...prev, searchOpen: false }));
-        }
-        if (state.commandPaletteOpen) {
-          setState(prev => ({ ...prev, commandPaletteOpen: false }));
-        }
+        setState(prev => ({
+          ...prev,
+          searchOpen: false,
+          commandPaletteOpen: false,
+        }));
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [state.searchOpen, state.commandPaletteOpen]);
+  }, []); // Remove dependencies to prevent recreation
 
-  const toggleTheme = () => {
+  // Memoized callback functions to prevent unnecessary re-renders
+  const toggleTheme = useCallback(() => {
     setState(prev => ({
       ...prev,
       theme: prev.theme === 'light' ? 'dark' : prev.theme === 'dark' ? 'system' : 'light',
     }));
-  };
+  }, []);
 
-  const setTheme = (theme: 'light' | 'dark' | 'system') => {
+  const setTheme = useCallback((theme: 'light' | 'dark' | 'system') => {
     setState(prev => ({ ...prev, theme }));
-  };
+  }, []);
 
-  const toggleSidebar = () => {
+  const toggleSidebar = useCallback(() => {
     setState(prev => ({ ...prev, sidebarCollapsed: !prev.sidebarCollapsed }));
-  };
+  }, []);
 
-  const setSidebarCollapsed = (collapsed: boolean) => {
+  const setSidebarCollapsed = useCallback((collapsed: boolean) => {
     setState(prev => ({ ...prev, sidebarCollapsed: collapsed }));
-  };
+  }, []);
 
-  const addNotification = (notification: Omit<Notification, 'id' | 'read'>) => {
+  const addNotification = useCallback((notification: Omit<Notification, 'id' | 'read'>) => {
     const newNotification: Notification = {
       ...notification,
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // More unique ID
       read: false,
     };
 
@@ -240,9 +269,9 @@ export function UIProvider({ children }: UIProviderProps) {
       notifications: [newNotification, ...prev.notifications].slice(0, 50),
       unreadCount: prev.unreadCount + 1,
     }));
-  };
+  }, []);
 
-  const removeNotification = (id: string) => {
+  const removeNotification = useCallback((id: string) => {
     setState(prev => {
       const notification = prev.notifications.find(n => n.id === id);
       const wasUnread = notification && !notification.read;
@@ -250,38 +279,43 @@ export function UIProvider({ children }: UIProviderProps) {
       return {
         ...prev,
         notifications: prev.notifications.filter(n => n.id !== id),
-        unreadCount: wasUnread ? prev.unreadCount - 1 : prev.unreadCount,
+        unreadCount: wasUnread ? Math.max(0, prev.unreadCount - 1) : prev.unreadCount,
       };
     });
-  };
+  }, []);
 
-  const markNotificationRead = (id: string) => {
-    setState(prev => ({
-      ...prev,
-      notifications: prev.notifications.map(n => 
-        n.id === id ? { ...n, read: true } : n
-      ),
-      unreadCount: Math.max(0, prev.unreadCount - 1),
-    }));
-  };
+  const markNotificationRead = useCallback((id: string) => {
+    setState(prev => {
+      const notification = prev.notifications.find(n => n.id === id);
+      if (!notification || notification.read) return prev;
 
-  const markAllNotificationsRead = () => {
+      return {
+        ...prev,
+        notifications: prev.notifications.map(n => 
+          n.id === id ? { ...n, read: true } : n
+        ),
+        unreadCount: Math.max(0, prev.unreadCount - 1),
+      };
+    });
+  }, []);
+
+  const markAllNotificationsRead = useCallback(() => {
     setState(prev => ({
       ...prev,
       notifications: prev.notifications.map(n => ({ ...n, read: true })),
       unreadCount: 0,
     }));
-  };
+  }, []);
 
-  const clearAllNotifications = () => {
+  const clearAllNotifications = useCallback(() => {
     setState(prev => ({
       ...prev,
       notifications: [],
       unreadCount: 0,
     }));
-  };
+  }, []);
 
-  const setLoading = (key: string, loading: boolean) => {
+  const setLoading = useCallback((key: string, loading: boolean) => {
     setState(prev => ({
       ...prev,
       loading: {
@@ -289,21 +323,22 @@ export function UIProvider({ children }: UIProviderProps) {
         [key]: loading,
       },
     }));
-  };
+  }, []);
 
-  const isLoading = (key: string) => {
+  const isLoading = useCallback((key: string) => {
     return state.loading[key] || false;
-  };
+  }, [state.loading]);
 
-  const toggleSearch = () => {
+  const toggleSearch = useCallback(() => {
     setState(prev => ({ ...prev, searchOpen: !prev.searchOpen }));
-  };
+  }, []);
 
-  const toggleCommandPalette = () => {
+  const toggleCommandPalette = useCallback(() => {
     setState(prev => ({ ...prev, commandPaletteOpen: !prev.commandPaletteOpen }));
-  };
+  }, []);
 
-  const value: UIContextType = {
+  // Memoize the context value to prevent unnecessary re-renders
+  const value = useMemo((): UIContextType => ({
     ...state,
     toggleTheme,
     setTheme,
@@ -318,7 +353,22 @@ export function UIProvider({ children }: UIProviderProps) {
     isLoading,
     toggleSearch,
     toggleCommandPalette,
-  };
+  }), [
+    state,
+    toggleTheme,
+    setTheme,
+    toggleSidebar,
+    setSidebarCollapsed,
+    addNotification,
+    removeNotification,
+    markNotificationRead,
+    markAllNotificationsRead,
+    clearAllNotifications,
+    setLoading,
+    isLoading,
+    toggleSearch,
+    toggleCommandPalette,
+  ]);
 
   return <UIContext.Provider value={value}>{children}</UIContext.Provider>;
 }

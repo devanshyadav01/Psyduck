@@ -1,84 +1,49 @@
-import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { Toaster } from 'sonner';
+import React, { useMemo, Suspense } from 'react';
+import { loadAppConfiguration } from './lib/app/configuration';
+import { useAppInitialization } from './lib/app/initialization';
+import { PerformantErrorBoundary } from './components/app/ErrorBoundary';
+import { AppLoadingScreen } from './components/app/LoadingFallback';
+import { 
+  AppProviders, 
+  AppContent, 
+  FloatingElementsContainer, 
+  RoutePreloader, 
+  PerformanceMonitor 
+} from './components/app/LazyComponents';
 
-import { AuthProvider } from './contexts/AuthContext';
-import { UIProvider } from './contexts/UIContext';
-import { AppContent } from './components/AppContent';
-import { DevInfo } from './components/DevInfo';
-import { useRealTimeSync } from './hooks/useAPI';
-import { config, isDevelopment } from './config/environment';
+// Load configuration once
+const { APP_CONFIG, config, isDevelopment } = loadAppConfiguration();
 
-// Monaco Editor type declaration
-declare global {
-  interface Window {
-    monaco: any;
-    require: any;
-  }
-}
-
-// Create a query client instance
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: (failureCount, error) => {
-        // Don't retry on 401 (unauthorized) or 403 (forbidden)
-        if (error instanceof Error && error.message.includes('401')) return false;
-        if (error instanceof Error && error.message.includes('403')) return false;
-        return failureCount < 3;
-      },
-      staleTime: 2 * 60 * 1000, // 2 minutes default stale time
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: true,
-    },
-    mutations: {
-      retry: 1,
-    },
-  },
-});
-
-// Real-time sync wrapper component
-function RealTimeSyncProvider({ children }: { children: React.ReactNode }) {
-  useRealTimeSync();
-  return <>{children}</>;
-}
-
+// Main App component with maximum optimization
 export default function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <UIProvider>
-          <RealTimeSyncProvider>
-            <AppContent />
-            
-            {/* Development Info Panel */}
-            <DevInfo />
-            
-            {/* Toast notifications */}
-            <Toaster 
-              position="top-right"
-              toastOptions={{
-                style: {
-                  background: 'hsl(var(--card))',
-                  color: 'hsl(var(--card-foreground))',
-                  border: '1px solid hsl(var(--border))',
-                },
-              }}
-              closeButton
-              richColors
-            />
-            
-            {/* React Query DevTools - only in development */}
-            {isDevelopment && config.features.devTools && (
-              <ReactQueryDevtools 
-                initialIsOpen={false} 
-                buttonPosition="bottom-right"
-              />
-            )}
-          </RealTimeSyncProvider>
-        </UIProvider>
-      </AuthProvider>
-    </QueryClientProvider>
-  );
+  useAppInitialization(APP_CONFIG, config, isDevelopment);
+
+  // Memoize the entire app structure with stable reference
+  const appContent = useMemo(() => (
+    <PerformantErrorBoundary>
+      <AppProviders>
+        <Suspense fallback={<AppLoadingScreen />}>
+          <AppContent />
+        </Suspense>
+        
+        {/* Fixed Floating Elements Container - completely isolated from document flow */}
+        <Suspense fallback={null}>
+          <FloatingElementsContainer />
+        </Suspense>
+        
+        {/* Development Performance Monitor */}
+        {process.env.NODE_ENV === 'development' && (
+          <Suspense fallback={null}>
+            <PerformanceMonitor />
+          </Suspense>
+        )}
+        
+        <Suspense fallback={null}>
+          <RoutePreloader />
+        </Suspense>
+      </AppProviders>
+    </PerformantErrorBoundary>
+  ), []);
+
+  return appContent;
 }

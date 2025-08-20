@@ -1,522 +1,268 @@
-# Psyduck - Project-Based Learning Platform
+# 🦆 Psyduck Learning Platform
 
-<div align="center">
-  <img src="https://via.placeholder.com/150x150?text=🦆" alt="Psyduck Logo" width="150" height="150">
-  
-  **Learn to Code Through Real-World Projects**
-  
-  [![Build Status](https://img.shields.io/github/workflow/status/psyduck-platform/frontend/CI)](https://github.com/psyduck-platform/frontend/actions)
-  [![Coverage](https://img.shields.io/codecov/c/github/psyduck-platform/frontend)](https://codecov.io/gh/psyduck-platform/frontend)
-  [![License](https://img.shields.io/github/license/psyduck-platform/frontend)](LICENSE)
-  [![Version](https://img.shields.io/github/package-json/v/psyduck-platform/frontend)](package.json)
-</div>
+A revolutionary project-based learning platform that combines GitHub + LeetCode + Upwork with gamification elements, teaching users through real projects organized into domains (MERN Stack, Flutter/React Native, Data Analytics, AI/ML) and difficulty levels.
 
-## 🚀 Overview
+## ✨ Features
 
-Psyduck is a revolutionary project-based learning platform that combines the best features of GitHub (collaboration), LeetCode (skill assessment), and Upwork (real-world projects) with comprehensive gamification elements. Our platform teaches users through building real projects organized into domains and difficulty levels, while maintaining engagement through XP, badges, streaks, and social features.
+### 🎮 Gamified Learning
+- **XP System**: Earn experience points for completing projects and challenges
+- **Badges & Achievements**: Unlock special badges for various accomplishments
+- **Streaks**: Build daily learning streaks with bonus rewards
+- **Leaderboards**: Compete with other learners globally
+- **Level Progression**: Advance through skill levels with clear milestones
 
-### ✨ Key Features
+### 📚 Project-Based Learning
+- **Real Projects**: Learn through actual industry projects
+- **Multiple Domains**: MERN Stack, Flutter/React Native, Data Analytics, AI/ML
+- **Difficulty Levels**: Beginner, Intermediate, Advanced
+- **Company Partnerships**: Real projects from partnered companies for high performers
+- **Progress Tracking**: Detailed analytics on learning progress
 
-- **📚 Project-Based Learning**: Structured learning paths across MERN Stack, Flutter/React Native, Data Analytics, and AI/ML domains
-- **🎮 Gamification System**: Earn XP, unlock badges, maintain learning streaks, and compete on leaderboards
-- **💻 Integrated IDE**: Professional code editor with Monaco Editor, syntax highlighting, and real-time execution
-- **🤝 Social Learning**: Collaborate with peers, get mentorship, participate in discussions
-- **🏢 Professional Opportunities**: Direct hiring opportunities with partnered companies for top performers
-- **📊 Analytics Dashboard**: Comprehensive learning analytics and progress tracking
-- **🌙 Modern UI/UX**: Dark/light mode support with responsive design and accessibility features
+### 💻 Professional IDE
+- **Monaco Editor**: Full-featured code editor with syntax highlighting
+- **Multi-Language Support**: JavaScript, Python, Java, C++, TypeScript, and more
+- **Code Execution**: Run code directly in the browser with real-time results
+- **Auto-completion**: Intelligent code completion and error detection
+- **Theme Support**: Dark/Light themes with customization options
 
-## 🛠️ Technology Stack
+### 🤖 AI-Powered Assistance
+- **Floating Chatbot**: Get help with coding questions and project guidance
+- **Smart Suggestions**: AI-powered code suggestions and improvements
+- **Learning Path Recommendations**: Personalized learning recommendations
+
+### 🎥 Content Creation (Premium)
+- **Video Submissions**: Premium users can submit educational content
+- **Technical Tags**: Categorize content with predefined technical tags
+- **Review System**: Content review and approval process
+- **Creator Dashboard**: Track submissions and performance
+
+### 🔄 Real-Time Features
+- **Socket.IO Integration**: Real-time updates and notifications
+- **Live Progress**: See your progress update in real-time
+- **Instant Notifications**: Get notified of achievements and updates
+- **Collaborative Features**: Share code and learn together
+
+## 🚀 Technology Stack
 
 ### Frontend
-- **React 18+** with TypeScript for type-safe development
-- **Tailwind CSS v4.0** with custom design tokens for styling
-- **ShadCN/UI** for consistent, accessible component library
-- **Monaco Editor** for professional IDE experience
-- **Socket.IO** for real-time features
-- **React Query** for efficient data fetching and caching
-- **Vite** for fast development and optimized builds
+- **React 18**: Latest React with concurrent features
+- **TypeScript**: Full type safety throughout the application
+- **Tailwind CSS v4**: Modern utility-first CSS framework
+- **Tailwind Variables**: Custom design system with brand colors
+- **Monaco Editor**: VS Code's editor in the browser
+- **React Query**: Powerful data fetching and caching
+- **Socket.IO Client**: Real-time communication
 
 ### Backend Integration
-- RESTful API integration with comprehensive error handling
-- Real-time WebSocket connections for live updates
-- Secure authentication with JWT tokens
-- File upload and management capabilities
+- **RESTful API**: Clean API architecture with proper separation
+- **Service Layer**: Modular frontend services for different domains
+- **Mock API**: Comprehensive mock API for development
+- **Type-Safe Requests**: Fully typed API responses
 
-## 📦 Installation
+### Development Tools
+- **Performance Monitoring**: Built-in performance optimization
+- **Error Boundaries**: Robust error handling
+- **Route Preloading**: Optimized navigation experience
+- **Bundle Optimization**: Code splitting and lazy loading
+
+## 🎨 Design System
+
+### Color Palette
+- **Primary**: `#E67514` (Psyduck Orange)
+- **Dark Background**: `#212121`
+- **Success**: `#06923E`
+- **Soft Background**: `#D3ECCD`
+- **Hover States**: `#d16612`
+
+### Typography
+- **Base Font Size**: 14px
+- **Font Weights**: 400 (normal), 500 (medium)
+- **Responsive**: Scales appropriately across devices
+
+### Components
+- **ShadCN UI**: Complete component library
+- **Floating Elements**: Isolated floating UI components
+- **Responsive Design**: Mobile-first approach
+- **Accessibility**: WCAG compliant components
+
+## 📁 Project Structure
+
+```
+├── App.tsx                     # Main application entry point
+├── components/                 # React components
+│   ├── auth/                  # Authentication components
+│   ├── projects/              # Project-related components
+│   ├── ide/                   # IDE components
+│   ├── recruiting/            # Premium recruiting features
+│   ├── shared/               # Shared utility components
+│   ├── providers/            # Context providers
+│   └── ui/                   # ShadCN UI components
+├── services/                  # Service layer
+│   ├── api/                  # API client layer
+│   ├── frontend/             # Frontend service layer
+│   └── legacy files          # Backwards compatibility
+├── contexts/                 # React contexts
+├── hooks/                    # Custom React hooks
+├── lib/                      # Utility libraries
+├── types/                    # TypeScript type definitions
+├── config/                   # Configuration files
+└── styles/                   # CSS and styling
+```
+
+## 🔧 Service Architecture
+
+### API Client Layer (`/services/api/`)
+- **ApiClient.ts**: Core HTTP client with authentication
+- **Mock Integration**: Seamless mock API routing
+- **Type Safety**: Fully typed API responses
+- **Error Handling**: Robust error handling and recovery
+
+### Frontend Service Layer (`/services/frontend/`)
+- **ServiceManager.ts**: Central service coordination
+- **AuthService.ts**: Authentication and user management
+- **ProjectService.ts**: Project management and progress tracking
+- **GamificationService.ts**: XP, badges, and leaderboards
+- **NotificationService.ts**: Real-time notifications
+- **CodeService.ts**: Code execution and history
+
+### Legacy Compatibility
+- **apiService.ts**: Backwards compatibility layer
+- **Seamless Migration**: Existing components work without changes
+- **Gradual Adoption**: Migrate to new services over time
+
+## 🚀 Getting Started
 
 ### Prerequisites
+- Node.js 18+ 
+- Modern web browser with ES2022 support
 
-- **Node.js** 18+ and npm/pnpm
-- **Git** for version control
-- Modern web browser with ES2020+ support
-
-### Quick Start
+### Installation
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/psyduck-platform/frontend.git
-   cd psyduck-frontend
+   git clone <repository-url>
+   cd psyduck-learning-platform
    ```
 
 2. **Install dependencies**
    ```bash
    npm install
-   # or
-   pnpm install
    ```
 
-3. **Environment setup**
+3. **Start development server**
    ```bash
-   cp .env.example .env.local
-   ```
-   
-   Configure your environment variables:
-   ```env
-   REACT_APP_API_URL=http://localhost:8000/api
-   REACT_APP_WS_URL=ws://localhost:8000
-   REACT_APP_ENVIRONMENT=development
+   npm start
    ```
 
-4. **Start development server**
-   ```bash
-   npm run dev
-   ```
+4. **Open in browser**
+   Navigate to `http://localhost:3000`
 
-5. **Open your browser**
-   Navigate to `http://localhost:3000` to see the application running.
+### Environment Setup
 
-### Docker Setup (Alternative)
+Create a `.env.local` file with the following variables:
 
-```bash
-# Build and run with Docker
-docker build -t psyduck-frontend .
-docker run -p 3000:80 psyduck-frontend
+```env
+# API Configuration (currently using mock API)
+REACT_APP_API_URL=https://api.psyduck.dev/v1
+REACT_APP_USE_MOCK_API=true
+
+# Socket.IO Configuration
+REACT_APP_SOCKET_URL=wss://api.psyduck.dev
+
+# Optional: Analytics and monitoring
+REACT_APP_ANALYTICS_ID=your_analytics_id
 ```
 
-## 🏗️ Project Structure
+## 🎯 Usage
 
-```
-src/
-├── components/           # React components
-│   ├── ui/              # Base UI components (ShadCN)
-│   │   ├── button.tsx
-│   │   ├── card.tsx
-│   │   └── ...
-│   ├── features/        # Feature-specific components
-│   │   ├── Dashboard.tsx
-│   │   ├── IDE.tsx
-│   │   ├── ProjectCatalog.tsx
-│   │   └── ...
-│   ├── layout/          # Layout components
-│   │   ├── Header.tsx
-│   │   ├── Sidebar.tsx
-│   │   └── ...
-│   └── shared/          # Shared/common components
-│       ├── LoadingScreen.tsx
-│       ├── ErrorBoundary.tsx
-│       └── ...
-├── hooks/               # Custom React hooks
-│   ├── useAuth.ts
-│   ├── useRouter.ts
-│   └── ...
-├── contexts/            # React Context providers
-│   ├── AuthContext.tsx
-│   ├── UIContext.tsx
-│   └── ...
-├── services/            # API services and utilities
-│   ├── apiService.ts
-│   ├── authService.ts
-│   └── ...
-├── types/               # TypeScript type definitions
-│   ├── api.ts
-│   ├── user.ts
-│   └── ...
-├── utils/               # Utility functions
-│   ├── navigation.ts
-│   ├── formatting.ts
-│   └── ...
-├── config/              # Configuration files
-│   ├── routes.ts
-│   └── constants.ts
-├── styles/              # CSS and styling files
-│   └── globals.css
-└── assets/              # Static assets
-    ├── images/
-    └── icons/
-```
+### For Learners
 
-## 🎯 Core Components
+1. **Sign Up**: Create your account and choose your learning path
+2. **Browse Projects**: Explore projects by domain and difficulty
+3. **Start Learning**: Enroll in projects and begin coding
+4. **Track Progress**: Monitor your XP, badges, and progress
+5. **Join Community**: Compete on leaderboards and connect with peers
 
-### Authentication System
-- **Login/Register**: Secure authentication with form validation
-- **Password Reset**: Email-based password recovery
-- **Social Login**: GitHub, Google, LinkedIn integration
-- **Route Protection**: Automatic redirection for unauthorized access
+### For Premium Users
 
-### Dashboard
-- **Progress Overview**: Visual progress tracking with charts
-- **XP & Level Display**: Real-time gamification metrics
-- **Active Projects**: Quick access to ongoing work
-- **Achievement Gallery**: Badge collection and milestones
+1. **Content Creation**: Submit educational videos with technical tags
+2. **Advanced Projects**: Access exclusive company-partnered projects
+3. **Priority Support**: Get faster response times for help requests
+4. **Analytics Dashboard**: Detailed learning analytics and insights
 
-### IDE (Integrated Development Environment)
-- **Monaco Editor**: VS Code-like editing experience
-- **Multi-language Support**: JavaScript, Python, Java, C++, Go
-- **Real-time Execution**: Secure code execution with output display
-- **Syntax Highlighting**: Language-specific code formatting
-- **Auto-completion**: IntelliSense-style code suggestions
+### For Developers
 
-### Project Catalog
-- **Filterable Grid**: Search and filter projects by domain/difficulty
-- **Detailed Views**: Comprehensive project information
-- **Enrollment System**: One-click project enrollment
-- **Progress Tracking**: Visual progress indicators
+1. **API Integration**: Use the service layer for clean API integration
+2. **Component Development**: Leverage the design system and UI components
+3. **Performance Optimization**: Built-in performance monitoring and optimization
+4. **Real-time Features**: Socket.IO integration for live features
 
-## 🎮 Gamification Features
+## 📊 Performance
 
-### XP (Experience Points) System
-- **Project Completion**: Earn XP based on project difficulty
-- **Daily Activities**: Bonus XP for consistent engagement
-- **Quality Bonuses**: Extra XP for high-quality code submissions
-- **Social Participation**: XP rewards for helping peers
+### Optimization Features
+- **Code Splitting**: Automatic route-based code splitting
+- **Lazy Loading**: Components loaded on demand
+- **Service Workers**: Offline support and caching
+- **Bundle Analysis**: Built-in bundle size monitoring
+- **Performance Monitoring**: Real-time performance metrics
 
-### Achievement System
-- **Progress Badges**: Milestone-based achievements
-- **Skill Badges**: Domain expertise recognition
-- **Social Badges**: Community contribution rewards
-- **Special Badges**: Limited-time and event-based achievements
+### Browser Support
+- **Modern Browsers**: Chrome 88+, Firefox 84+, Safari 14+, Edge 88+
+- **Mobile**: iOS Safari 14+, Chrome Android 88+
+- **Features**: ES2022, WebAssembly, Service Workers
 
-### Leaderboards
-- **Global Rankings**: Platform-wide XP leaderboards
-- **Domain-Specific**: Rankings within learning domains
-- **Weekly/Monthly**: Time-based competition periods
-- **Streak Tracking**: Consecutive learning day tracking
+## 🔒 Security
 
-## 🔧 Development
+### Authentication
+- **JWT Tokens**: Secure token-based authentication
+- **Token Refresh**: Automatic token renewal
+- **Secure Storage**: Proper token storage practices
+- **Permission System**: Role-based access control
 
-### Available Scripts
-
-```bash
-# Development
-npm run dev              # Start development server
-npm run type-check       # TypeScript type checking
-
-# Testing
-npm run test            # Run unit tests
-npm run test:watch      # Run tests in watch mode
-npm run test:coverage   # Generate coverage report
-npm run test:e2e        # Run end-to-end tests
-
-# Building
-npm run build           # Production build
-npm run preview         # Preview production build
-npm run analyze         # Bundle size analysis
-
-# Code Quality
-npm run lint            # ESLint code linting
-npm run lint:fix        # Fix linting errors
-npm run format          # Prettier code formatting
-```
-
-### Code Style Guidelines
-
-- **TypeScript**: Strict mode enabled with comprehensive type checking
-- **ESLint**: Extended from React and TypeScript recommended configs
-- **Prettier**: Consistent code formatting across the project
-- **Husky**: Pre-commit hooks for quality assurance
-
-### Component Development
-
-```typescript
-// Example component structure
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-
-interface ExampleComponentProps {
-  title: string;
-  onAction: () => void;
-}
-
-export const ExampleComponent: React.FC<ExampleComponentProps> = ({
-  title,
-  onAction
-}) => {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Button onClick={onAction}>
-          Take Action
-        </Button>
-      </CardContent>
-    </Card>
-  );
-};
-```
-
-## 🧪 Testing
-
-### Testing Strategy
-- **Unit Tests**: Component-level testing with Vitest and React Testing Library
-- **Integration Tests**: API integration and user flow testing
-- **E2E Tests**: Full user journey testing with Playwright
-- **Visual Regression**: UI component screenshot comparisons
-
-### Running Tests
-
-```bash
-# Unit tests
-npm run test
-
-# E2E tests (requires backend running)
-npm run test:e2e
-
-# Coverage report
-npm run test:coverage
-```
-
-### Writing Tests
-
-```typescript
-// Example test file
-import { render, screen, fireEvent } from '@testing-library/react';
-import { ExampleComponent } from './ExampleComponent';
-
-describe('ExampleComponent', () => {
-  test('renders title correctly', () => {
-    render(
-      <ExampleComponent 
-        title="Test Title" 
-        onAction={() => {}} 
-      />
-    );
-    
-    expect(screen.getByText('Test Title')).toBeInTheDocument();
-  });
-
-  test('calls onAction when button clicked', () => {
-    const mockAction = jest.fn();
-    render(
-      <ExampleComponent 
-        title="Test" 
-        onAction={mockAction} 
-      />
-    );
-    
-    fireEvent.click(screen.getByText('Take Action'));
-    expect(mockAction).toHaveBeenCalled();
-  });
-});
-```
-
-## 🌐 API Integration
-
-### Service Layer Architecture
-
-```typescript
-// API service example
-class ApiService {
-  private baseURL = process.env.REACT_APP_API_URL;
-  
-  async get<T>(endpoint: string): Promise<T> {
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
-      headers: {
-        'Authorization': `Bearer ${this.getToken()}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status}`);
-    }
-    
-    return response.json();
-  }
-  
-  // ... other methods
-}
-```
-
-### Environment Configuration
-
-```bash
-# .env.local
-REACT_APP_API_URL=http://localhost:8000/api
-REACT_APP_WS_URL=ws://localhost:8000
-REACT_APP_ENVIRONMENT=development
-REACT_APP_ENABLE_ANALYTICS=false
-REACT_APP_SENTRY_DSN=your_sentry_dsn_here
-```
-
-## 🚀 Deployment
-
-### Production Build
-
-```bash
-npm run build
-```
-
-This creates a `dist` folder with optimized production files.
-
-### Deployment Options
-
-#### 1. Static Hosting (Netlify, Vercel)
-```bash
-# Build and deploy
-npm run build
-# Upload dist folder to your hosting provider
-```
-
-#### 2. AWS S3 + CloudFront
-```bash
-# Build
-npm run build
-
-# Deploy to S3
-aws s3 sync dist/ s3://your-bucket-name --delete
-aws cloudfront create-invalidation --distribution-id YOUR_ID --paths "/*"
-```
-
-#### 3. Docker
-```bash
-# Build Docker image
-docker build -t psyduck-frontend .
-
-# Run container
-docker run -p 80:80 psyduck-frontend
-```
-
-### Environment Variables for Production
-
-```bash
-REACT_APP_API_URL=https://api.psyduck.dev
-REACT_APP_WS_URL=wss://api.psyduck.dev
-REACT_APP_ENVIRONMENT=production
-REACT_APP_ENABLE_ANALYTICS=true
-REACT_APP_SENTRY_DSN=your_production_sentry_dsn
-```
+### Data Protection
+- **Input Validation**: Client and server-side validation
+- **XSS Protection**: Proper content sanitization
+- **CSRF Protection**: Cross-site request forgery prevention
+- **Secure Headers**: Security headers implementation
 
 ## 🤝 Contributing
 
-We welcome contributions from the community! Please read our contributing guidelines before submitting PRs.
+We welcome contributions! Please read our contributing guidelines:
 
-### Development Setup
+1. **Fork the repository**
+2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
+3. **Commit changes**: `git commit -m 'Add amazing feature'`
+4. **Push to branch**: `git push origin feature/amazing-feature`
+5. **Open a Pull Request**
 
-1. **Fork the repository** on GitHub
-2. **Clone your fork** locally
-3. **Create a feature branch** from `main`
-4. **Make your changes** with proper tests
-5. **Submit a pull request** with a clear description
+### Development Guidelines
+- Follow TypeScript best practices
+- Write tests for new features
+- Update documentation
+- Follow the established code style
+- Ensure accessibility compliance
 
-### Contribution Guidelines
-
-- Follow the existing code style and conventions
-- Write comprehensive tests for new features
-- Update documentation for API changes
-- Ensure all tests pass before submitting
-- Use descriptive commit messages
-
-### Code Review Process
-
-1. Automated checks (tests, linting, type checking)
-2. Peer review by team members
-3. Manual testing of UI changes
-4. Approval and merge to main branch
-
-## 📊 Performance & Monitoring
-
-### Performance Optimization
-- **Code Splitting**: Route-based lazy loading
-- **Tree Shaking**: Unused code elimination
-- **Image Optimization**: Responsive images with lazy loading
-- **Bundle Analysis**: Regular bundle size monitoring
-
-### Monitoring Integration
-- **Error Tracking**: Sentry integration for error monitoring
-- **Analytics**: User behavior tracking (optional)
-- **Performance Metrics**: Web Vitals monitoring
-- **Real-time Monitoring**: Application health checks
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-#### Development Server Won't Start
-```bash
-# Clear node modules and reinstall
-rm -rf node_modules package-lock.json
-npm install
-npm run dev
-```
-
-#### TypeScript Errors
-```bash
-# Run type checking
-npm run type-check
-
-# Clear TypeScript cache
-rm -rf node_modules/.cache
-```
-
-#### Build Failures
-```bash
-# Check for linting errors
-npm run lint
-
-# Verify all tests pass
-npm run test
-```
-
-### Getting Help
-
-- **Documentation**: Check our [Wiki](https://github.com/psyduck-platform/frontend/wiki)
-- **Issues**: Report bugs on [GitHub Issues](https://github.com/psyduck-platform/frontend/issues)
-- **Discussions**: Join our [Discord Community](https://discord.gg/psyduck)
-- **Email**: Contact us at support@psyduck.dev
-
-## 📈 Roadmap
-
-### Short-term Goals (Next 3 months)
-- [ ] Mobile app development (React Native)
-- [ ] Advanced code analysis with AI
-- [ ] Peer-to-peer code review system
-- [ ] Enhanced mentorship features
-
-### Medium-term Goals (6 months)
-- [ ] Live coding sessions and webinars
-- [ ] Company integration API for custom projects
-- [ ] Advanced analytics dashboard for educators
-- [ ] Multi-language support (i18n)
-
-### Long-term Vision (1 year+)
-- [ ] VR/AR coding environments
-- [ ] Blockchain-based achievement verification
-- [ ] Global coding competition platform
-- [ ] Enterprise learning management features
-
-## 📄 License
+## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
-- **React Team** for the amazing framework
-- **Tailwind CSS** for the utility-first CSS framework
-- **ShadCN** for the beautiful component library
-- **Microsoft** for Monaco Editor
-- **Community Contributors** who make this project possible
+- **Monaco Editor**: For the excellent code editor
+- **ShadCN UI**: For the beautiful component library
+- **Tailwind CSS**: For the utility-first CSS framework
+- **React Query**: For powerful data fetching
+- **Socket.IO**: For real-time communication
+
+## 📞 Support
+
+- **Documentation**: Check the `/docs` folder for detailed guides
+- **Issues**: Report bugs on GitHub Issues
+- **Discussions**: Join GitHub Discussions for questions
+- **Email**: contact@psyduck.dev
 
 ---
 
-<div align="center">
-  <p>Built with ❤️ by the Psyduck Team</p>
-  <p>
-    <a href="https://psyduck.dev">Website</a> •
-    <a href="https://docs.psyduck.dev">Documentation</a> •
-    <a href="https://discord.gg/psyduck">Discord</a> •
-    <a href="https://twitter.com/psyduck_dev">Twitter</a>
-  </p>
-</div>
+**Built with ❤️ by the Psyduck Learning Platform Team**
+
+*Empowering developers through project-based learning and gamification* 🦆
